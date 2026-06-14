@@ -1,0 +1,42 @@
+2026-06-04 12:09:33.667 | INFO     | __main__:main:489 - START profiling | RSS=0.11GB
+2026-06-04 12:09:34.031 | INFO     | __main__:step_schema:114 - [0.2] schema.json written | categories={'failure_maintenance': 4, 'timestamp': 4, 'binary_sensor': 20, 'continuous_sensor': 74, 'operational_state': 7}
+2026-06-04 12:09:34.125 | INFO     | __main__:step_stream:208 - [0.3] 1/246 day=01 rows=66671 cumrows=66,671 RSS=0.39GB
+2026-06-04 12:09:35.890 | INFO     | __main__:step_stream:208 - [0.3] 31/246 day=01 rows=45122 cumrows=1,745,386 RSS=0.68GB
+2026-06-04 12:09:37.855 | INFO     | __main__:step_stream:208 - [0.3] 61/246 day=31 rows=69236 cumrows=3,476,358 RSS=0.97GB
+2026-06-04 12:09:39.929 | INFO     | __main__:step_stream:208 - [0.3] 91/246 day=05 rows=65252 cumrows=5,102,154 RSS=1.05GB
+2026-06-04 12:09:41.938 | INFO     | __main__:step_stream:208 - [0.3] 121/246 day=07 rows=9376 cumrows=6,931,893 RSS=1.07GB
+2026-06-04 12:09:43.944 | INFO     | __main__:step_stream:208 - [0.3] 151/246 day=07 rows=62205 cumrows=8,437,812 RSS=1.22GB
+2026-06-04 12:09:46.408 | INFO     | __main__:step_stream:208 - [0.3] 181/246 day=07 rows=56842 cumrows=10,358,584 RSS=1.40GB
+2026-06-04 12:09:48.542 | INFO     | __main__:step_stream:208 - [0.3] 211/246 day=07 rows=68839 cumrows=12,215,413 RSS=1.50GB
+2026-06-04 12:09:50.441 | INFO     | __main__:step_stream:208 - [0.3] 241/246 day=06 rows=43950 cumrows=14,057,634 RSS=1.59GB
+2026-06-04 12:09:50.738 | INFO     | __main__:step_stream:208 - [0.3] 246/246 day=11 rows=70199 cumrows=14,342,361 RSS=1.61GB
+2026-06-04 12:09:50.887 | INFO     | __main__:step_stream:214 - [0.3] total_rows=14,342,361 sample_rows=717,008
+2026-06-04 12:09:50.954 | INFO     | __main__:step_full_stats:238 - [0.3] full_stats.csv + sensor_summary.csv (74 continuous cols)
+2026-06-04 12:09:54.544 | INFO     | __main__:step_operational:279 - [0.4] operational_state_analysis.csv + distribution plot
+2026-06-04 12:09:55.012 | INFO     | __main__:step_events:326 - [0.5] events: 35 failures (25 brake) + 55 maintenance (train period only; full-year totals are 11/18)
+2026-06-04 12:09:55.141 | INFO     | __main__:step_events:349 - [0.5] event_inventory.csv + label_vocabularies.json + timeline plot
+2026-06-04 12:10:01.014 | INFO     | __main__:step_quality:396 - [0.6] data_quality.csv + binary_sensor_stats.csv | 214 continuous pairs with |r|>0.98
+2026-06-04 12:10:09.044 | INFO     | __main__:step_eda_plots:485 - [0.7] EDA plots written (nulls, distributions, duty cycles, failure comparison, seasonal)
+2026-06-04 12:10:09.084 | INFO     | __main__:main:498 - DONE profiling | peak RSS=1.73GB | total_rows=14,342,361
+2026-06-04 12:20:58.289 | INFO     | __main__:main:535 - START profiling | RSS=0.12GB
+2026-06-04 12:20:58.660 | INFO     | __main__:step_schema:114 - [0.2] schema.json written | categories={'failure_maintenance': 4, 'timestamp': 4, 'binary_sensor': 20, 'continuous_sensor': 74, 'operational_state': 7}
+2026-06-04 12:20:58.771 | INFO     | __main__:step_stream:208 - [0.3] 1/246 day=01 rows=66671 cumrows=66,671 RSS=0.41GB
+2026-06-04 12:21:00.777 | INFO     | __main__:step_stream:208 - [0.3] 31/246 day=01 rows=45122 cumrows=1,745,386 RSS=0.71GB
+2026-06-04 12:21:02.607 | INFO     | __main__:step_stream:208 - [0.3] 61/246 day=31 rows=69236 cumrows=3,476,358 RSS=0.92GB
+2026-06-04 12:21:04.410 | INFO     | __main__:step_stream:208 - [0.3] 91/246 day=05 rows=65252 cumrows=5,102,154 RSS=1.11GB
+2026-06-04 12:21:06.314 | INFO     | __main__:step_stream:208 - [0.3] 121/246 day=07 rows=9376 cumrows=6,931,893 RSS=1.02GB
+2026-06-04 12:21:08.303 | INFO     | __main__:step_stream:208 - [0.3] 151/246 day=07 rows=62205 cumrows=8,437,812 RSS=1.16GB
+2026-06-04 12:21:10.409 | INFO     | __main__:step_stream:208 - [0.3] 181/246 day=07 rows=56842 cumrows=10,358,584 RSS=1.39GB
+2026-06-04 12:21:12.385 | INFO     | __main__:step_stream:208 - [0.3] 211/246 day=07 rows=68839 cumrows=12,215,413 RSS=1.44GB
+2026-06-04 12:21:14.181 | INFO     | __main__:step_stream:208 - [0.3] 241/246 day=06 rows=43950 cumrows=14,057,634 RSS=1.48GB
+2026-06-04 12:21:14.461 | INFO     | __main__:step_stream:208 - [0.3] 246/246 day=11 rows=70199 cumrows=14,342,361 RSS=1.53GB
+2026-06-04 12:21:14.613 | INFO     | __main__:step_stream:214 - [0.3] total_rows=14,342,361 sample_rows=717,008
+2026-06-04 12:21:14.676 | INFO     | __main__:step_full_stats:238 - [0.3] full_stats.csv + sensor_summary.csv (74 continuous cols)
+2026-06-04 12:21:18.125 | INFO     | __main__:step_operational:279 - [0.4] operational_state_analysis.csv + distribution plot
+2026-06-04 12:21:18.534 | INFO     | __main__:step_events:366 - [0.5] logical events (same-type, 24h merge): 10 failures (8 brake) + 11 maintenance | from 35+57 fine activations
+2026-06-04 12:21:18.534 | INFO     | __main__:step_events:371 - [0.5] failure types: {'Brake System Failure': 8, 'Leveling System Failure': 1, 'Compressor Module Failure': 1}
+2026-06-04 12:21:18.535 | INFO     | __main__:step_events:372 - [0.5] NOTE train is an 8.5-month subset; exposé full-year totals are 11 failures (7 brake) / 18 maintenance — flagged for review
+2026-06-04 12:21:18.619 | INFO     | __main__:step_events:395 - [0.5] event_inventory.csv + label_vocabularies.json + timeline plot
+2026-06-04 12:21:24.610 | INFO     | __main__:step_quality:442 - [0.6] data_quality.csv + binary_sensor_stats.csv | 214 continuous pairs with |r|>0.98
+2026-06-04 12:21:32.702 | INFO     | __main__:step_eda_plots:531 - [0.7] EDA plots written (nulls, distributions, duty cycles, failure comparison, seasonal)
+2026-06-04 12:21:32.735 | INFO     | __main__:main:544 - DONE profiling | peak RSS=1.50GB | total_rows=14,342,361

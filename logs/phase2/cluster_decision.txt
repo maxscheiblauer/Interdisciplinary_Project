@@ -1,0 +1,32 @@
+Phase 2 -- Task 3 cluster decision
+=======================================================
+
+Total braking-state events: 126,702
+Stationary brake-holds (zero deceleration): 0.1%
+  -> these are brake applied while already stopped, NOT decelerations.
+
+(A) Naive clustering on ALL events / all kinematic features finds high
+    silhouette + near-perfect ARI, BUT this is DEGENERATE: it separates
+    stationary-holds from moving stops and splits by START VELOCITY, not
+    by intensity. BIC also decreases monotonically (no preferred k).
+    -> discarded as not an intensity result. See *_alldata.csv.
+
+(B) Honest intensity test -- real-deceleration events, intensity features:
+ k    gmm_bic    gmm_aic  kmeans_silhouette  davies_bouldin  bootstrap_ari  min_cluster_frac
+ 1 940635.709 940547.967                NaN             NaN            NaN               NaN
+ 2 884034.272 883849.040              0.406           0.925          0.992             0.408
+ 3 811851.997 811569.274              0.407           0.714          0.832             0.000
+ 4 782709.437 782329.223              0.390           0.797          0.868             0.000
+ 5 778574.524 778096.820              0.315           0.899          0.964             0.000
+ 6 767810.272 767235.077              0.278           0.973          0.678             0.000
+
+BIC argmin at k=6  (interior minimum: False; K_MAX=6)
+Thresholds: silhouette>=0.25, bootstrap_ARI>=0.7
+
+DECISION: CONTINUUM -- braking intensity is NOT discrete classes.
+  BIC has no interior minimum (more GMM components always help), i.e.
+  the deceleration distribution is a single skewed pile (sharp mode
+  ~0.046 normalized, long thin tail to ~1.0), not separable regimes.
+  -> SKIP Task 4. Task 5 (deceleration regression) is the PRIMARY
+     intensity result. This is a legitimate, publishable finding and
+     matches the smooth unimodal deceleration seen in v1.

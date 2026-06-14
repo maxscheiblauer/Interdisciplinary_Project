@@ -1,0 +1,26 @@
+Phase 2 -- Task 6 pre-failure braking summary
+=======================================================
+
+Brake failures (n): 8  [SMALL N -- interpret cautiously]
+Pre-failure windows with >= 20 events (usable): 8/8
+
+Distributional tests (pooled pre-7d vs baseline >30d), 10 features,
+Bonferroni-corrected: 8 feature(s) significant at alpha=0.05.
+NOTE: with ~35k pooled pre-failure events, even tiny distribution shifts
+reach significance -- read the Cliff's-delta EFFECT SIZE, not just p.
+Effect sizes |delta|<0.15 are negligible regardless of p-value.
+
+Exploratory coefficient-shift OLS (n_pre=23017, baseline sampled=44008):
+  pre_failure: beta=-0.0005, p=0.639
+  brake_cylinder_pressure_integral:pre_failure: beta=+0.0013, p=1.99e-19
+  main_reservoir_pressure_drop:pre_failure: beta=-0.3000, p=2.96e-46
+  load_pressure_mean:pre_failure: beta=+0.0048, p=0.321
+  model R2=0.043
+
+CUSUM weekly main_reservoir_pressure_drop (threshold 4.0 std, ~1 FA/6mo): 4 change points; 1 within 0-7d of a failure.
+
+FUTURE WORK (not implemented): brake-system failures may manifest during
+CHARGING/IDLE (compressor/reservoir/valve), not during deceleration. This
+braking-only analysis may be looking under the wrong lamp post. A follow-up
+should repeat it on state in {standing, cruising} windows using auxiliary
+sensors (compressor duty cycle, reservoir recharge time).

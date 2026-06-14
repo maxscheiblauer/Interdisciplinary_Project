@@ -1,0 +1,22 @@
+event_class,start,end,duration_s,n_active_rows,type,n_activations
+failure,2024-06-27 15:47:30,2024-06-27 17:52:28,7498.0,7185,Brake System Failure,1
+failure,2024-08-19 10:37:51,2024-08-19 11:05:44,1673.0,1611,Brake System Failure,1
+failure,2024-08-27 15:58:43,2024-08-28 21:29:25,106242.0,32532,Leveling System Failure,8
+failure,2024-09-03 05:04:00,2024-09-03 07:33:36,8976.0,8469,Brake System Failure,2
+failure,2024-09-22 05:49:43,2024-09-22 08:14:45,8702.0,6122,Brake System Failure,3
+failure,2024-10-06 02:04:15,2024-10-08 09:15:36,198681.0,42540,Brake System Failure,9
+failure,2024-10-10 11:19:48,2024-10-10 15:35:49,15361.0,8420,Brake System Failure,3
+failure,2024-10-31 15:08:06,2024-10-31 18:26:02,11876.0,8064,Compressor Module Failure,2
+failure,2024-12-14 18:56:40,2024-12-14 23:31:05,16465.0,11134,Brake System Failure,4
+failure,2025-01-21 06:11:15,2025-01-21 09:45:44,12869.0,11412,Brake System Failure,2
+maintenance,2024-07-02 07:04:01,2024-07-02 22:21:47,55066.0,13478,8-week-Revision,4
+maintenance,2024-08-27 14:31:21,2024-08-29 22:50:11,202730.0,66804,48-week-Revision,14
+maintenance,2024-08-30 07:13:30,2024-08-30 23:59:59,60389.0,57852,Revision Quality Control,1
+maintenance,2024-09-23 05:15:24,2024-09-23 23:59:59,67475.0,64084,4-week-Revision,2
+maintenance,2024-10-20 01:59:05,2024-10-20 22:57:24,75499.0,19924,Door Revision,4
+maintenance,2024-10-24 07:55:18,2024-10-24 23:59:59,57881.0,32120,Train Control Revision,6
+maintenance,2024-10-31 07:12:23,2024-10-31 23:59:59,60456.0,33699,Spot Inspection,5
+maintenance,2024-11-05 00:21:33,2024-11-09 23:59:59,430706.0,285339,Air Conditioning Revision,13
+maintenance,2024-11-28 01:06:57,2024-11-28 23:59:59,82382.0,41417,4-week-Revision,5
+maintenance,2024-12-29 01:09:05,2024-12-29 15:09:33,50428.0,33988,8-week-Revision,2
+maintenance,2025-01-17 10:26:47,2025-01-17 10:36:46,599.0,586,4-week-Revision,1

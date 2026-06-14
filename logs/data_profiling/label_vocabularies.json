@@ -1,0 +1,19 @@
+{
+  "TRAIN_FAILURE_TYPE": {
+    "No Failure": 14204872,
+    "Brake System Failure": 96893,
+    "Leveling System Failure": 32532,
+    "Compressor Module Failure": 8064
+  },
+  "TRAIN_MAINTENANCE_TYPE": {
+    "No Revision": 13693070,
+    "8-week-Revision": 47466,
+    "48-week-Revision": 66804,
+    "Revision Quality Control": 57852,
+    "4-week-Revision": 106087,
+    "Door Revision": 19924,
+    "Train Control Revision": 32120,
+    "Spot Inspection": 33699,
+    "Air Conditioning Revision": 285339
+  }
+}

@@ -1,0 +1,1 @@
+[3b] braking_event_clusters.parquet not found -> intensity is a CONTINUUM (no stable clusters). Recover-from-pneumatics is correctly SKIPPED; the deceleration regression (07) is the primary intensity result.
