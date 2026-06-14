@@ -1,0 +1,5 @@
+cluster,velocity_mean,accel_mean,accel_min,accel_max,jerk_mean,accel_std,n_windows,pct,label
+0,0.8421,0.0019,-0.0022,0.0149,-0.0028,0.5187,257471,17.27,cruising
+1,0.3432,-0.0327,-0.0446,-0.0101,-0.0003,0.5079,302008,20.26,braking
+2,0.0,0.0,0.0,0.0,0.0,0.0,717211,48.12,standing
+3,0.3046,0.041,0.0033,0.0564,0.0037,0.7156,213807,14.34,accelerating

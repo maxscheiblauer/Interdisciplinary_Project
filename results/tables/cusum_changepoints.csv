@@ -1,0 +1,5 @@
+changepoint,proxy,days_to_next_failure_within_7,within_7d_of_failure
+2024-08-04,main_reservoir_pressure_drop,,False
+2024-09-01,main_reservoir_pressure_drop,2.0,True
+2025-01-05,main_reservoir_pressure_drop,,False
+2025-01-26,main_reservoir_pressure_drop,,False

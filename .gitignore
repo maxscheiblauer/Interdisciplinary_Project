@@ -1,0 +1,20 @@
+# Data (large, redistributable from DOI 10.48436/9ja0q-bq581)
+train/
+test/
+data/raw/
+data/interim/
+# Derived processed data (4.7 GB, regenerable from scripts 00-08) — not tracked
+data/processed/
+
+# Coverage
+.coverage
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Outputs kept in repo: results/, logs/, models/ (small artifacts)
+# Oversized regenerable model (119 MB > GitHub's 100 MB limit); the importances it
+# produced are tracked in results/tables/feature_importance_phase1.csv.
+models/phase1/rf_feature_importance.joblib

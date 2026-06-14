@@ -1,0 +1,36 @@
+Phase 2 -- Leakage audit
+============================================================
+
+Rule: the modality that DEFINES a target must never predict it.
+Velocity/kinematics -> targets. Actuation + auxiliary -> predictors.
+
+Window features classified: 208
+  role counts: {'actuation': 120, 'auxiliary': 60, 'other': 16, 'velocity': 12}
+  predictor pool (actuation+auxiliary): 180
+  velocity target pool: 12
+  predictor/target overlap: 0 -> DISJOINT OK
+
+Phase-1 states are defined by KINEMATICS ONLY (Option A). The 12
+state-defining features (velocity + acceleration family):
+    - TRAIN_SPEED_ACTUAL__mean
+    - TRAIN_SPEED_ACTUAL__std
+    - TRAIN_SPEED_ACTUAL__min
+    - TRAIN_SPEED_ACTUAL__max
+    - acceleration__mean
+    - acceleration__std
+    - acceleration__min
+    - acceleration__max
+    - jerk__mean
+    - jerk__std
+    - velocity_change_rate__mean
+    - velocity_change_rate__std
+
+  predictor pool overlap with state-definers: 0 -> DISJOINT OK
+
+Interpretation: `state` (and `braking`) is built from kinematics ALONE -- no
+pneumatic sensor entered the clustering. So predicting braking from pneumatics
+(state classifier) and recovering deceleration from pneumatics (regression) are
+BOTH fully cross-modal: every predictor is independent of the kinematic features
+that defined the target. Tier A (auxiliary-only) and Tier B (+actuation) are clean.
+
+RESULT: predictor and target/state-definer pools are disjoint. PASS.
