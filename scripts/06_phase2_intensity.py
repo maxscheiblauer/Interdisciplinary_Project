@@ -257,15 +257,19 @@ def main() -> None:
     plt.close(fig)
 
     # --- intensity distribution plot (the continuum) ---
+    p01 = float(np.percentile(real["peak_deceleration"], 1))
+    p99 = float(np.percentile(real["peak_deceleration"], 99))
     fig, axes = plt.subplots(1, 2, figsize=(13, 4.5))
-    axes[0].hist(ev["peak_deceleration"], bins=100, color="slategray")
+    axes[0].hist(ev["peak_deceleration"], bins=200, color="slategray")
     axes[0].axvline(0, color="red", ls="--", label=f"zero-decel mass ({frac_hold:.0%})")
     axes[0].set_xlabel("peak deceleration (normalized)"); axes[0].set_ylabel("count")
     axes[0].set_title("All braking-state events (note the zero spike)")
     axes[0].legend()
-    axes[1].hist(real["peak_deceleration"], bins=100, color="steelblue")
+    axes[1].hist(real["peak_deceleration"], bins=200, color="steelblue",
+                 range=(p01, p99))
     axes[1].set_xlabel("peak deceleration (normalized)"); axes[1].set_ylabel("count")
-    axes[1].set_title("Real-deceleration events: unimodal pile + tail (continuum)")
+    axes[1].set_title(f"Real-deceleration events (1–99th pct, {p01:.3f}–{p99:.3f})\n"
+                      "unimodal bell + tail (continuum)")
     fig.tight_layout()
     fig.savefig(PLOT_DIR / "intensity_distribution.png", dpi=150)
     plt.close(fig)

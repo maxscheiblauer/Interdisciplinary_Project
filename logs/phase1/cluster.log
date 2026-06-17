@@ -79,3 +79,23 @@
         4        3         0.3046        0.5020      0.0410     0.0033     0.0564     0.0037     0.7156     213807 14.34
 2026-06-14 11:52:03.516 | INFO     | __main__:kinematic_cluster:237 - [1.4] candidates saved; DECIDE k in 03_phase1_validate.py (D2)
 2026-06-14 11:52:03.536 | INFO     | __main__:main:246 - DONE phase1 cluster (candidates) | RSS=5.29GB
+2026-06-16 13:41:06.051 | INFO     | __main__:main:256 - START phase1 kinematic cluster | RSS=0.19GB
+2026-06-16 13:41:06.052 | INFO     | __main__:operational_audit:91 - [1.2] checkpoint: operational_state_audit.csv exists — skipping
+2026-06-16 13:41:06.052 | INFO     | __main__:build_windows:119 - [1.3] checkpoint: train_windows.parquet exists — loading
+2026-06-16 13:41:08.953 | INFO     | __main__:kinematic_cluster:169 - [1.4] kinematic clustering on 12 feats, 1,490,497 windows
+2026-06-16 13:41:25.916 | INFO     | __main__:kinematic_cluster:195 - [1.4] k=2: sil=0.476 db=0.999 ari(km vs hier)=nan bic=-999,076
+2026-06-16 13:41:40.554 | INFO     | __main__:kinematic_cluster:195 - [1.4] k=3: sil=0.535 db=1.196 ari(km vs hier)=0.811 bic=-1,088,827
+2026-06-16 13:41:55.594 | INFO     | __main__:kinematic_cluster:195 - [1.4] k=4: sil=0.567 db=1.091 ari(km vs hier)=0.766 bic=-1,210,764
+2026-06-16 13:42:15.325 | INFO     | __main__:kinematic_cluster:195 - [1.4] k=5: sil=0.587 db=0.990 ari(km vs hier)=nan bic=-1,321,647
+2026-06-16 13:42:35.314 | INFO     | __main__:kinematic_cluster:195 - [1.4] k=6: sil=0.605 db=0.945 ari(km vs hier)=nan bic=-1,375,693
+2026-06-16 13:42:36.407 | INFO     | __main__:kinematic_cluster:212 - [1.4] candidate profiles (k=3 and k=4):
+ n_states  cluster  velocity_mean  velocity_max  accel_mean  accel_min  accel_max  jerk_mean  accel_std  n_windows   pct
+        3        0         0.0000        0.0000      0.0000     0.0000     0.0000     0.0000     0.0000     736634 49.42
+        3        1         0.4164        0.6044      0.0360     0.0030     0.0557     0.0019     0.6837     269928 18.11
+        3        2         0.5881        0.6964     -0.0229    -0.0429     0.0000    -0.0010     0.4846     483935 32.47
+        4        0         0.8421        0.8952      0.0019    -0.0022     0.0149    -0.0028     0.5187     257471 17.27
+        4        1         0.3432        0.4897     -0.0327    -0.0446    -0.0101    -0.0003     0.5079     302008 20.26
+        4        2         0.0000        0.0000      0.0000     0.0000     0.0000     0.0000     0.0000     717211 48.12
+        4        3         0.3046        0.5020      0.0410     0.0033     0.0564     0.0037     0.7156     213807 14.34
+2026-06-16 13:42:38.507 | INFO     | __main__:kinematic_cluster:251 - [1.4] candidates saved; DECIDE k in 03_phase1_validate.py (D2)
+2026-06-16 13:42:38.539 | INFO     | __main__:main:260 - DONE phase1 cluster (candidates) | RSS=5.22GB

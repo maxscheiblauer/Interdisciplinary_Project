@@ -34,7 +34,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 from loguru import logger  # noqa: E402
 from sklearn.ensemble import HistGradientBoostingRegressor  # noqa: E402
-from sklearn.linear_model import LinearRegression  # noqa: E402
+from sklearn.linear_model import Lasso, LinearRegression, Ridge  # noqa: E402
 from sklearn.metrics import mean_absolute_error, r2_score  # noqa: E402
 from sklearn.model_selection import train_test_split  # noqa: E402
 from sklearn.pipeline import make_pipeline  # noqa: E402
@@ -85,6 +85,8 @@ def main() -> None:
     tiers = {"auxonly": aux, "full": full}
     rows = []
     coef_store: dict[str, tuple[list[str], np.ndarray]] = {}
+    scatter_store: dict[str, tuple[np.ndarray, np.ndarray]] = {}
+    lasso_coef_store: dict[str, tuple[list[str], np.ndarray]] = {}
 
     for scope_name, scope_df in scopes.items():
         for target in TARGETS:
@@ -101,8 +103,12 @@ def main() -> None:
                     base_mae = mean_absolute_error(yte, base_pred)
 
                     lin = make_pipeline(StandardScaler(), LinearRegression()).fit(Xtr, ytr)
+                    ridge = make_pipeline(StandardScaler(), Ridge(alpha=1.0)).fit(Xtr, ytr)
+                    lasso = make_pipeline(StandardScaler(),
+                                         Lasso(alpha=0.0001, max_iter=5000)).fit(Xtr, ytr)
                     tree = HistGradientBoostingRegressor(random_state=RNG).fit(Xtr, ytr)
-                    for mname, model in (("lin", lin), ("tree", tree)):
+                    for mname, model in (("lin", lin), ("ridge", ridge),
+                                         ("lasso", lasso), ("tree", tree)):
                         pred = model.predict(Xte)
                         rows.append(dict(
                             scope=scope_name, target=target, tier=tier_name,
@@ -116,6 +122,8 @@ def main() -> None:
                     if scope_name == "real_decel" and tier_name == "full" and not dur:
                         coef = lin.named_steps["linearregression"].coef_
                         coef_store[target] = (cols, coef)
+                        scatter_store[target] = (yte, lin.predict(Xte))
+                        lasso_coef_store[target] = (cols, lasso.named_steps["lasso"].coef_)
                         joblib.dump(lin, MODEL_DIR / f"decel_regress_lin_{target.split('_')[0]}.joblib")
                         joblib.dump(tree, MODEL_DIR / f"decel_regress_tree_{target.split('_')[0]}.joblib")
 
@@ -132,17 +140,56 @@ def main() -> None:
                     f"({b.tier}/{b.model}); non-velocity sensors explain "
                     f"{b.r2*100:.0f}% of variance out-of-sample")
 
-    # --- coefficient plot (tier B, no duration) ---
-    fig, axes = plt.subplots(1, 2, figsize=(15, 7))
-    for ax, target in zip(axes, TARGETS):
+    # --- coefficient plot: linear top-15 + Lasso (variable selection) ---
+    fig, axes = plt.subplots(1, 3, figsize=(20, 7))
+    for ax, target in zip(axes[:2], TARGETS):
         cols, coef = coef_store[target]
         order = np.argsort(np.abs(coef))[::-1][:15]
         ax.barh([cols[i] for i in order][::-1], coef[order][::-1], color="teal")
         ax.set_xlabel("standardized coefficient")
         ax.set_title(f"{target}: top-15 linear drivers (tier B)")
-    fig.suptitle("Which non-velocity sensors explain deceleration (held-out model)")
+    # Lasso variable selection: show all non-zero coefficients for peak_deceleration
+    lasso_cols, lasso_coef = lasso_coef_store[TARGETS[0]]
+    nonzero = np.where(lasso_coef != 0)[0]
+    if len(nonzero) == 0:
+        axes[2].text(0.5, 0.5, "All Lasso coefficients zeroed\n(try smaller alpha)",
+                     ha="center", va="center", transform=axes[2].transAxes)
+    else:
+        order_l = nonzero[np.argsort(np.abs(lasso_coef[nonzero]))[::-1]]
+        axes[2].barh([lasso_cols[i] for i in order_l][::-1],
+                     lasso_coef[order_l][::-1], color="indianred")
+    axes[2].set_xlabel("Lasso coefficient (zero = excluded)")
+    axes[2].set_title(f"{TARGETS[0]}: Lasso variable selection (tier B)\n"
+                      f"{len(nonzero)}/{len(lasso_cols)} sensors selected")
+    fig.suptitle("Which non-velocity sensors explain deceleration")
     fig.tight_layout()
     fig.savefig(PLOT_DIR / "decel_regression_coeffs.png", dpi=150)
+    plt.close(fig)
+
+    # --- scatter plot: predicted vs actual (primary linear model, tier B) ---
+    rng_plot = np.random.default_rng(RNG)
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5.5))
+    for ax, target in zip(axes, TARGETS):
+        yte_s, pred_s = scatter_store[target]
+        n_plot = min(5000, len(yte_s))
+        idx = rng_plot.choice(len(yte_s), n_plot, replace=False)
+        ax.scatter(yte_s[idx], pred_s[idx], s=2, alpha=0.3, color="teal")
+        lo = float(np.percentile(yte_s[idx], 1))
+        hi = float(np.percentile(yte_s[idx], 99))
+        pad = (hi - lo) * 0.05
+        ax.set_xlim(lo - pad, hi + pad)
+        ax.set_ylim(lo - pad, hi + pad)
+        ax.plot([lo - pad, hi + pad], [lo - pad, hi + pad], "r--", lw=1.2, label="perfect fit")
+        best_r2 = metrics[(metrics.scope == "real_decel") & (metrics.target == target)
+                          & (~metrics.with_duration) & (metrics.tier == "full")
+                          & (metrics.model == "lin")]["r2"].iloc[0]
+        ax.set_xlabel(f"actual {target}")
+        ax.set_ylabel(f"predicted {target}")
+        ax.set_title(f"{target}\nLinear regression, tier B — out-of-sample R²={best_r2:.2f}")
+        ax.legend(fontsize=8)
+    fig.suptitle("Regression: predicted vs actual deceleration (5 000 test-set points, primary model)")
+    fig.tight_layout()
+    fig.savefig(PLOT_DIR / "decel_regression_scatter.png", dpi=150)
     plt.close(fig)
     logger.info("[5] Task 5 complete.")
 
