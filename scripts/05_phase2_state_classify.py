@@ -45,6 +45,9 @@ from sklearn.metrics import (  # noqa: E402
 from sklearn.model_selection import train_test_split  # noqa: E402
 from sklearn.pipeline import make_pipeline  # noqa: E402
 from sklearn.preprocessing import StandardScaler  # noqa: E402
+from sklearn.decomposition import PCA  # noqa: E402
+from sklearn.ensemble import RandomForestClassifier  # noqa: E402
+from sklearn.linear_model import LogisticRegression  # noqa: E402
 from sklearn.tree import DecisionTreeClassifier, plot_tree  # noqa: E402
 
 PROC = ROOT / "data" / "processed"
@@ -106,16 +109,24 @@ def main() -> None:
     confusions: dict[tuple[str, str], np.ndarray] = {}
     saved_lda_full = None
     saved_dt_full = None
+    ALL_MODELS = ["dt", "lda", "qda", "rf", "lr", "pca_lda"]
 
     for tier_name, feats in tiers.items():
         X = df[feats].to_numpy("float32")
         Xtr, Xte, ytr, yte = train_test_split(
             X, y, test_size=0.25, random_state=RNG, stratify=y)
+        n_pca = min(15, len(feats) - 1)
         models = {
             "dt": DecisionTreeClassifier(max_depth=5, class_weight="balanced", random_state=RNG),
             "lda": make_pipeline(StandardScaler(), LinearDiscriminantAnalysis()),
             "qda": make_pipeline(StandardScaler(),
                                  QuadraticDiscriminantAnalysis(reg_param=1e-3)),
+            "rf": RandomForestClassifier(n_estimators=50, max_depth=10,
+                                         class_weight="balanced", n_jobs=-1, random_state=RNG),
+            "lr": make_pipeline(StandardScaler(), LogisticRegression(
+                max_iter=1000, class_weight="balanced", solver="saga", random_state=RNG)),
+            "pca_lda": make_pipeline(StandardScaler(), PCA(n_components=n_pca),
+                                     LinearDiscriminantAnalysis()),
         }
         for mname, model in models.items():
             fitted, row, cm = _eval(f"{tier_name}/{mname}", model, Xtr, Xte, ytr, yte)
@@ -136,7 +147,7 @@ def main() -> None:
     logger.info(f"[2] metrics written:\n{metrics.to_string(index=False)}")
 
     # --- Tier A vs B contrast (headline finding) ---
-    for m in ["dt", "lda", "qda"]:
+    for m in ALL_MODELS:
         a = metrics[(metrics.tier == "auxonly") & (metrics.model == m)]["f1_braking"].iloc[0]
         b = metrics[(metrics.tier == "full") & (metrics.model == m)]["f1_braking"].iloc[0]
         logger.info(f"[2] {m}: F1(brake) auxonly={a:.3f} -> full={b:.3f} (+{b - a:.3f})")
@@ -163,11 +174,13 @@ def main() -> None:
     fig.savefig(PLOT_DIR / "state_clf_lda_coeffs.png", dpi=150)
     plt.close(fig)
 
-    # --- confusion matrices (tiers x models) ---
-    fig, axes = plt.subplots(2, 3, figsize=(13, 8))
+    # --- confusion matrices (all tiers x all models: 4 rows x 3 cols) ---
+    fig, axes = plt.subplots(4, 3, figsize=(13, 16))
     for i, tier_name in enumerate(["auxonly", "full"]):
-        for j, mname in enumerate(["dt", "lda", "qda"]):
-            ax = axes[i, j]
+        for j, mname in enumerate(ALL_MODELS):
+            row = i * 2 + (j // 3)
+            col = j % 3
+            ax = axes[row, col]
             cm = confusions[(tier_name, mname)]
             cmn = cm / cm.sum(axis=1, keepdims=True)
             ax.imshow(cmn, cmap="Blues", vmin=0, vmax=1)
@@ -178,13 +191,30 @@ def main() -> None:
             ax.set_xticks([0, 1]); ax.set_yticks([0, 1])
             ax.set_xticklabels(["not", "brake"]); ax.set_yticklabels(["not", "brake"])
             ax.set_title(f"{tier_name} / {mname}")
-            if j == 0:
+            if col == 0:
                 ax.set_ylabel("true")
-            if i == 1:
+            if row >= 2:
                 ax.set_xlabel("predicted")
-    fig.suptitle("State classification confusion matrices (held-out, row-normalized)")
+    fig.suptitle("State classification confusion matrices (held-out, row-normalized)\n"
+                 "Rows 1–2: auxiliary-only tier  |  Rows 3–4: full tier (aux + actuation)")
     fig.tight_layout()
     fig.savefig(PLOT_DIR / "state_clf_confusion.png", dpi=150)
+    plt.close(fig)
+
+    # --- model comparison bar chart (AUC and F1 for all models, both tiers) ---
+    fig, axes = plt.subplots(1, 2, figsize=(13, 5))
+    x = np.arange(len(ALL_MODELS))
+    for ax, metric in zip(axes, ["roc_auc", "f1_braking"]):
+        for offset, tier_name in zip([-0.2, 0.2], ["auxonly", "full"]):
+            vals = [metrics[(metrics.tier == tier_name) & (metrics.model == m)][metric].iloc[0]
+                    for m in ALL_MODELS]
+            ax.bar(x + offset, vals, width=0.35, label=tier_name, alpha=0.85)
+        ax.set_xticks(x); ax.set_xticklabels(ALL_MODELS, rotation=15, ha="right")
+        ax.set_ylabel(metric); ax.set_title(f"{metric} by model and predictor tier")
+        ax.set_ylim(0, 1); ax.legend()
+    fig.suptitle("Braking-state classifier comparison (held-out test set)")
+    fig.tight_layout()
+    fig.savefig(PLOT_DIR / "state_clf_comparison.png", dpi=150)
     plt.close(fig)
     logger.info("[2] plots written; Task 2 complete.")
 

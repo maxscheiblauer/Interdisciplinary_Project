@@ -48,6 +48,7 @@ from sklearn.metrics import (  # noqa: E402
     silhouette_score,
 )
 from sklearn.preprocessing import StandardScaler  # noqa: E402
+from sklearn.mixture import GaussianMixture  # noqa: E402
 
 from metroat import schema as S  # noqa: E402
 from metroat import windowing as W  # noqa: E402
@@ -175,7 +176,7 @@ def kinematic_cluster(windows, schema):
     Z = linkage(Xz[sub], method="ward")
     hier_labels = {k: fcluster(Z, t=k, criterion="maxclust") for k in (3, 4)}
 
-    # --- k-means sweep for selection + ARI vs hierarchical ---
+    # --- k-means sweep + GMM BIC/AIC for selection + ARI vs hierarchical ---
     rows = []
     km_models = {}
     for k in range(2, 7):
@@ -184,10 +185,16 @@ def kinematic_cluster(windows, schema):
         db = davies_bouldin_score(Xz[sil_idx], km.labels_[sil_idx])
         ari = (adjusted_rand_score(hier_labels[k], km.labels_[sub])
                if k in hier_labels else np.nan)
+        gm = GaussianMixture(n_components=k, covariance_type="full",
+                             random_state=RNG, n_init=2).fit(Xz[sil_idx])
+        bic_val = gm.bic(Xz[sil_idx])
+        aic_val = gm.aic(Xz[sil_idx])
         rows.append(dict(k=k, silhouette=sil, davies_bouldin=db,
-                         kmeans_vs_hier_ari=ari))
+                         kmeans_vs_hier_ari=ari,
+                         gmm_bic=bic_val, gmm_aic=aic_val))
         logger.info(f"[1.4] k={k}: sil={sil:.3f} db={db:.3f} "
-                    f"ari(km vs hier)={ari if isinstance(ari, float) else float('nan'):.3f}")
+                    f"ari(km vs hier)={ari if isinstance(ari, float) else float('nan'):.3f} "
+                    f"bic={bic_val:,.0f}")
         if k in (3, 4):
             km_models[k] = km
             joblib.dump(km, MODEL_DIR / f"kmeans_kinematic_k{k}.joblib")
@@ -207,16 +214,23 @@ def kinematic_cluster(windows, schema):
     # --- plots ---
     fig, ax = plt.subplots(figsize=(11, 4.5))
     dendrogram(Z, truncate_mode="lastp", p=20, ax=ax, no_labels=True)
-    ax.set_title("Hierarchical (Ward) dendrogram — kinematic features (8k subsample)")
+    ax.set_title("Hierarchical (Ward) dendrogram - 8000 subsample")
     ax.set_ylabel("merge distance")
     fig.tight_layout(); fig.savefig(PLOT_DIR / "dendrogram.png", dpi=150); plt.close(fig)
 
     sel = pd.DataFrame(rows)
-    fig, axes = plt.subplots(1, 2, figsize=(11, 4))
+    k_bic_min = int(sel.loc[sel.gmm_bic.idxmin(), "k"])
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4))
     axes[0].plot(sel.k, sel.silhouette, "o-", color="green")
-    axes[0].set_xlabel("k"); axes[0].set_ylabel("silhouette"); axes[0].set_title("Silhouette (higher=better)")
+    axes[0].set_xlabel("k"); axes[0].set_ylabel("silhouette"); axes[0].set_title("Silhouette")
     axes[1].plot(sel.k, sel.davies_bouldin, "o-", color="purple")
-    axes[1].set_xlabel("k"); axes[1].set_ylabel("Davies-Bouldin"); axes[1].set_title("Davies-Bouldin (lower=better)")
+    axes[1].set_xlabel("k"); axes[1].set_ylabel("Davies-Bouldin"); axes[1].set_title("Davies-Bouldin")
+    axes[2].plot(sel.k, sel.gmm_bic, "o-", label="BIC")
+    axes[2].plot(sel.k, sel.gmm_aic, "s--", label="AIC")
+    axes[2].axvline(k_bic_min, color="grey", ls=":", alpha=0.8, label=f"k={k_bic_min} (BIC min)")
+    axes[2].set_xlabel("k"); axes[2].set_ylabel("information criterion")
+    axes[2].set_title("GMM BIC / AIC ")
+    axes[2].legend()
     fig.suptitle("Kinematic-clustering model selection")
     fig.tight_layout(); fig.savefig(PLOT_DIR / "kinematic_kselection.png", dpi=150); plt.close(fig)
 
@@ -232,6 +246,22 @@ def kinematic_cluster(windows, schema):
         plt.colorbar(sc, ax=ax, label="cluster")
     fig.suptitle("Kinematic clusters in 2-D PCA space")
     fig.tight_layout(); fig.savefig(PLOT_DIR / "kinematic_cluster_scatter.png", dpi=150); plt.close(fig)
+
+    # --- velocity vs acceleration scatter, colored by cluster ---
+    vel_raw = windows["TRAIN_SPEED_ACTUAL__mean"].to_numpy()[sil_idx]
+    acc_raw = windows["acceleration__mean"].to_numpy()[sil_idx]
+    fig, axes = plt.subplots(1, 2, figsize=(13, 5.5))
+    for ax, k in zip(axes, (3, 4)):
+        sc = ax.scatter(vel_raw, acc_raw, c=km_models[k].labels_[sil_idx],
+                        cmap="tab10", s=4, alpha=0.35)
+        ax.set_xlabel("velocity (normalised)")
+        ax.set_ylabel("acceleration (normalised)")
+        ax.set_title(f"k={k}")
+        plt.colorbar(sc, ax=ax, label="cluster")
+    fig.suptitle("Kinematic clusters: velocity vs acceleration (20 000 subsample)")
+    fig.tight_layout()
+    fig.savefig(PLOT_DIR / "kinematic_vel_accel_scatter.png", dpi=150)
+    plt.close(fig)
 
     windows.drop(columns=[c for c in windows.columns if c.startswith("_k")], inplace=True)
     logger.info("[1.4] candidates saved; DECIDE k in 03_phase1_validate.py (D2)")
