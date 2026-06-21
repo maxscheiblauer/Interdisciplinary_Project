@@ -1,10 +1,8 @@
-"""Phase 2 v2 — honest braking analysis (pure logic).
+"""Braking analysis primitives (pure logic, no I/O).
 
-This module replaces the circular-classification core of v1. Its central job is
-the **feature-role ledger**: every window / event feature is assigned exactly one
-*role* so that no task ever lets a predictor leak its own target.
-
-Roles (see ``execution_plan_phase2_v2.md`` "central design principle"):
+Central job is the **feature-role ledger**: every window / event feature is
+assigned exactly one *role* so that no task ever lets a predictor leak its own
+target. Roles:
 
 * ``velocity``  — kinematics (speed, acceleration, jerk, deceleration, delta_v,
   velocity-at-start/end). These *define* braking and intensity; they are only ever
@@ -62,7 +60,7 @@ _DERIVED_GROUP: dict[str, str] = {
     "air_suspension_mean": "LOAD_PRESSURE",  # air-spring load pressure
 }
 
-# Event-level features produced by Task 1 -> sensor group.
+# Event-level features -> sensor group.
 _EVENT_GROUP: dict[str, str] = {
     # velocity / target side
     "peak_deceleration": "VELOCITY",
@@ -189,12 +187,12 @@ def build_role_ledger(features: list[str], level: str = "window") -> pd.DataFram
     return pd.DataFrame(rows)
 
 
-# Canonical event-feature names Task 1 will emit, so the ledger and every
+# Canonical event-feature names the extractor emits, so the ledger and every
 # downstream task agree on roles before the events parquet exists.
 EVENT_FEATURE_NAMES: list[str] = list(_EVENT_GROUP.keys())
 
 
-# --- event extraction (Task 1) --------------------------------------------
+# --- event extraction ------------------------------------------------------
 
 # Events are one contiguous occupancy of the Phase-1 braking state. We merge
 # only *immediately adjacent* 10 s windows; the max gap that still counts as
@@ -263,7 +261,7 @@ def _group_series(df: pd.DataFrame, substring: str, schema: dict | None = None) 
     return df[cols].mean(axis=1).to_numpy("float64")
 
 
-def event_features_v2(
+def event_features(
     day_df: pd.DataFrame, intervals: pd.DataFrame, schema: dict | None = None
 ) -> pd.DataFrame:
     """Role-tagged per-event features from a *single day's* 1 Hz frame.
@@ -271,7 +269,7 @@ def event_features_v2(
     ``intervals`` are the events (from :func:`braking_events_from_windows`) whose
     span lies within ``day_df``. Velocity features are the target side; actuation
     and auxiliary features are the predictor pools (see the role ledger). Integral
-    features use dt = 1 s and therefore scale with duration (noted for Task 5).
+    features use dt = 1 s and therefore scale with event duration.
     """
     df = day_df.sort_values("TIMESTAMP").reset_index(drop=True)
     ts = pd.to_datetime(df["TIMESTAMP"]).to_numpy()
