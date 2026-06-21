@@ -27,15 +27,15 @@ sensor dataset of a Wiener Linien metro train (TU Wien, *Instandhaltungsmanageme
 The data is delivered as **Hive-partitioned Parquet** (`train/year=*/month=*/day=*/day.parquet`).
 **Sensor values are min-max normalized to ~[0,1]** (not physical units). Train = Jun 2024 –
 11 Feb 2025; test (held out) = 12 Feb – Jun 2025. See
-[results/reports/00_data_decisions.md](results/reports/00_data_decisions.md) for the full
+[results/reports/data_decisions.md](results/reports/data_decisions.md) for the full
 profiling report and how the data differs from the original execution plan.
 
 ## Repository structure
 
 ```
-src/metroat/        io, schema, features, windowing, braking_v2, validation, stats
-scripts/            00_profile_data … 08_phase2_prefailure
-tests/              pytest suite (io, features, windowing, braking_v2, validation)
+src/metroat/        io, schema, features, windowing, braking, validation, stats
+scripts/            profile_data, preprocess, phase1_states, phase2_braking, phase2_intensity
+tests/              pytest suite (braking, features, core)
 data/processed/     cleaned per-day features + windowed datasets (gitignored; regenerable)
 models/{phase1,2}/  scalers, K-means, classifiers/regressors (joblib)
 results/{plots,tables,reports}/   all figures, tables, and the phase reports
@@ -53,20 +53,17 @@ uv run python -c "import pandas, sklearn, pyarrow; print('OK')"
 
 ```bash
 # place the dataset under ./train and ./test (year=/month=/day=/day.parquet)
-uv run python scripts/00_profile_data.py        # Step 0: profiling + EDA
-uv run python scripts/01_preprocess.py          # 1.1 clean/derive/scale
-uv run python scripts/02_phase1_cluster.py      # 1.2-1.4 kinematic clustering (k=3,4 candidates)
-uv run python scripts/03_phase1_validate.py     # 1.5-1.7 finalize k=4 labels + validation
-uv run python scripts/04_phase2_events.py       # 2.1 role ledger + leakage audit + braking events
-uv run python scripts/05_phase2_state_classify.py  # 2.2 braking-from-pneumatics (DT/LDA/QDA)
-uv run python scripts/06_phase2_intensity.py    # 2.3 continuum-vs-clusters (+recover if stable)
-uv run python scripts/07_phase2_decel_regress.py   # 2.4 deceleration regression (primary)
-uv run python scripts/08_phase2_prefailure.py   # 2.5 pre-failure braking behaviour
+# run the scripts in this order (each reads the previous one's artifacts):
+uv run python scripts/profile_data.py      # profiling + EDA
+uv run python scripts/preprocess.py        # clean / derive / fit scaler
+uv run python scripts/phase1_states.py     # kinematic clustering + k=4 state labels + validation
+uv run python scripts/phase2_braking.py    # role ledger, leakage audit, events, braking classifier
+uv run python scripts/phase2_intensity.py  # intensity clusters/continuum, decel regression, pre-failure
 uv run pytest tests/ -q --cov=metroat
 ```
 
-Phase 1/2 findings: [01_phase1_findings.md](results/reports/01_phase1_findings.md),
-[02_phase2_findings.md](results/reports/02_phase2_findings.md). Supervisor-facing
+Phase 1/2 findings: [phase1_findings.md](results/reports/phase1_findings.md),
+[phase2_findings.md](results/reports/phase2_findings.md). Supervisor-facing
 walkthroughs are in
 [notebooks/phase1_operational_states.ipynb](notebooks/phase1_operational_states.ipynb)
 and [notebooks/phase2_braking_analysis.ipynb](notebooks/phase2_braking_analysis.ipynb).

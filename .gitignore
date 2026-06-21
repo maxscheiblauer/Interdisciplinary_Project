@@ -3,7 +3,7 @@ train/
 test/
 data/raw/
 data/interim/
-# Derived processed data (4.7 GB, regenerable from scripts 00-08) — not tracked
+# Derived processed data (4.7 GB, regenerable from the scripts) — not tracked
 data/processed/
 
 # Coverage
