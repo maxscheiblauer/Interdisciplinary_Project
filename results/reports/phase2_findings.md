@@ -127,4 +127,4 @@ cruising}` windows using auxiliary sensors.
 *Artifacts: `results/tables/{feature_roles,event_summary,state_classification_metrics,
 cluster_selection,decel_regression_metrics,prefailure_tests,cusum_changepoints}.csv`,
 `results/plots/phase2/*.png`, `models/phase2/*.joblib`, `logs/phase2/*.txt`.
-Reproduce with `scripts/04–08_phase2_*.py` (checkpoint-skippable).*
+Reproduce with `scripts/phase2_braking.py` then `scripts/phase2_intensity.py` (checkpoint-skippable).*
