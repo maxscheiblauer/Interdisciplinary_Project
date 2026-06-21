@@ -29,11 +29,11 @@ The data is delivered as **Hive-partitioned Parquet** (`train/year=*/month=*/day
 11 Feb 2025 (14.3 M rows); test (held out) = 12 Feb – Jun 2025.
 
 Key data realities vs. the original plan:
-- Source is already Parquet — no CSV conversion needed
-- Values are min-max normalized, not physical units — all thresholds are empirical/quantile-based
-- Rows are **not** time-sorted within daily files — each file is sorted on load
+- Source is already Parquet - no CSV conversion needed
+- Values are min-max normalized, not physical units - all thresholds are empirical/quantile-based
+- Rows are **not** time-sorted within daily files - each file is sorted on load
 - Train is an 8.5-month subset (14.3 M rows, 10 logical failures / 11 maintenance events)
-- 214 high-correlation sensor pairs (|r| > 0.98) due to per-wagon replication — absorbed by PCA, no columns dropped
+- 214 high-correlation sensor pairs (|r| > 0.98) due to per-wagon replication - absorbed by PCA, no columns dropped
 
 ## Repository structure
 
