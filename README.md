@@ -34,8 +34,7 @@ profiling report and how the data differs from the original execution plan.
 
 ```
 src/metroat/        io, schema, features, windowing, braking, validation, stats
-scripts/            profile_data, preprocess, phase1_states, phase2_braking, phase2_intensity
-tests/              pytest suite (braking, features, core)
+scripts/            profile_data, preprocess, phase1_states, phase2_braking, phase2_intensity, build_notebooks
 data/processed/     cleaned per-day features + windowed datasets (gitignored; regenerable)
 models/{phase1,2}/  scalers, K-means, classifiers/regressors (joblib)
 results/{plots,tables,reports}/   all figures, tables, and the phase reports
@@ -59,7 +58,13 @@ uv run python scripts/preprocess.py        # clean / derive / fit scaler
 uv run python scripts/phase1_states.py     # kinematic clustering + k=4 state labels + validation
 uv run python scripts/phase2_braking.py    # role ledger, leakage audit, events, braking classifier
 uv run python scripts/phase2_intensity.py  # intensity clusters/continuum, decel regression, pre-failure
-uv run pytest tests/ -q --cov=metroat
+```
+
+The two notebooks are generated artifacts (they load saved tables/plots, no heavy
+recompute). Regenerate them after the pipeline with:
+
+```bash
+uv run python scripts/build_notebooks.py   # writes notebooks/phase1_*.ipynb, phase2_*.ipynb
 ```
 
 Phase 1/2 findings: [phase1_findings.md](results/reports/phase1_findings.md),
