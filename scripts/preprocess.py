@@ -1,18 +1,10 @@
-"""Phase 1.1 — Preprocessing.
+"""Preprocessing: clean + derive per-day feature frames and fit the scaler.
 
-Reads the partitioned train Parquet, and for each day: time-sorts, dedups,
-imputes (continuous have 0% nulls so this is a safety no-op), clips continuous
-to global [1st, 99th] percentiles, adds derived features, and writes a per-day
-cleaned+derived Parquet under data/processed/train_features/.
-
-A StandardScaler is fit from streaming statistics of the clipped continuous +
+For each daily Parquet: time-sort, dedup, ffill-impute (continuous have ~0% nulls,
+so this is a safety no-op), clip continuous to global [1st, 99th] percentiles, add
+derived features, write a per-day frame under data/processed/train_features/. A
+StandardScaler is fit from streaming Welford statistics of the clipped continuous +
 derived features (never on binary/operational/failure) and saved.
-
-Outputs:
-  data/processed/train_features/year=*/month=*/day=*/day.parquet
-  models/phase1/standard_scaler.joblib
-  models/phase1/scaled_feature_names.json
-  logs/phase1/timestamp_gaps.csv
 """
 from __future__ import annotations
 
@@ -88,7 +80,7 @@ def compute_clip_bounds(files, cont):
         v = np.concatenate(buf[c])
         v = v[np.isfinite(v)]
         lo[c], hi[c] = np.percentile(v, [1, 99])
-    logger.info(f"[1.1] clip bounds computed from {sum(len(x) for x in buf[cont[0]]):,} sampled rows")
+    logger.info(f"clip bounds computed from {sum(len(x) for x in buf[cont[0]]):,} sampled rows")
     return lo, hi
 
 
@@ -102,10 +94,10 @@ def main():
     done = list(OUT_ROOT.glob("year=*/month=*/day=*/day.parquet"))
     scaler_path = MODEL_DIR / "standard_scaler.joblib"
     if len(done) >= len(files) and scaler_path.exists():
-        logger.info(f"[1.1] checkpoint: {len(done)} day files + scaler exist — skipping")
+        logger.info(f"checkpoint: {len(done)} day files + scaler exist — skipping")
         return
 
-    logger.info(f"[1.1] {len(files)} daily files | RSS={proc.memory_info().rss/1e9:.2f}GB")
+    logger.info(f"{len(files)} daily files | RSS={proc.memory_info().rss/1e9:.2f}GB")
     lo, hi = compute_clip_bounds(files, cont)
 
     scaled_feats = cont + F.DERIVED_COLS
@@ -142,7 +134,7 @@ def main():
         df.to_parquet(out, engine="pyarrow", compression="snappy", index=False)
         total_rows += len(df)
         if i % 30 == 0 or i == len(files) - 1:
-            logger.info(f"[1.1] {i+1}/{len(files)} {y}-{m:02d}-{d:02d} rows={len(df)} "
+            logger.info(f"{i+1}/{len(files)} {y}-{m:02d}-{d:02d} rows={len(df)} "
                         f"RSS={proc.memory_info().rss/1e9:.2f}GB")
 
     # Build scaler from streaming stats.
@@ -161,7 +153,7 @@ def main():
     if gap_rows:
         pd.concat(gap_rows, ignore_index=True).to_csv(LOG_DIR / "timestamp_gaps.csv", index=False)
     n_gaps = sum(len(g) for g in gap_rows)
-    logger.info(f"[1.1] DONE rows={total_rows:,} dups_removed={total_dups} "
+    logger.info(f"DONE rows={total_rows:,} dups_removed={total_dups} "
                 f"gaps>{F.GAP_S}s={n_gaps} scaler+features saved "
                 f"RSS={proc.memory_info().rss/1e9:.2f}GB")
 

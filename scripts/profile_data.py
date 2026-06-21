@@ -1,17 +1,11 @@
-"""Step 0 — Data ingestion & profiling for the MetroAT dataset.
+"""Data profiling and EDA for the MetroAT dataset.
 
-The data is already Hive-partitioned Parquet (no zip / CSV stage), so this
-script covers plan steps 0.2–0.7. It streams the train set one daily file at a
-time (never loads everything), accumulating exact global statistics and a 5%
-row sample used for distribution plots and correlations.
-
-Outputs (under logs/data_profiling and results/):
-  0.2 schema.json
-  0.3 full_stats.csv, results/tables/sensor_summary.csv
-  0.4 operational_state_analysis.csv, plots/eda/operational_state_distributions.png
-  0.5 event_inventory.csv, label_vocabularies.json, plots/eda/eda_failure_timeline.png
-  0.6 data_quality.csv, binary_sensor_stats.csv (+ aggregated r>0.98 detection)
-  0.7 remaining EDA plots
+The data is already Hive-partitioned Parquet (no zip / CSV stage). Streams the
+train set one daily file at a time (never loads everything), accumulating exact
+global statistics and a 5% row sample used for distribution plots and
+correlations. Produces the schema, summary stats, operational-state breakdown,
+failure/maintenance inventory, data-quality report and EDA plots under
+logs/data_profiling/ and results/.
 """
 from __future__ import annotations
 
@@ -57,7 +51,7 @@ def rss_gb() -> float:
 
 
 # --------------------------------------------------------------------------- #
-# 0.2 Schema discovery
+# Schema discovery
 # --------------------------------------------------------------------------- #
 def _jsonsafe(v):
     if hasattr(v, "isoformat"):
@@ -111,7 +105,7 @@ def step_schema(files: list[Path]) -> dict:
         "columns": info,
     }
     out.write_text(json.dumps(schema, indent=2))
-    logger.info(f"[0.2] schema.json written | categories={dict(counts)}")
+    logger.info(f"schema.json written | categories={dict(counts)}")
     return schema
 
 
@@ -206,12 +200,12 @@ def step_stream(files: list[Path], schema: dict):
 
         if i % 30 == 0 or i == len(files) - 1:
             logger.info(
-                f"[0.3] {i+1}/{len(files)} {f.parent.name} rows={n} "
+                f"{i+1}/{len(files)} {f.parent.name} rows={n} "
                 f"cumrows={total_rows:,} RSS={rss_gb():.2f}GB"
             )
 
     sample = pd.concat(samples, ignore_index=True)
-    logger.info(f"[0.3] total_rows={total_rows:,} sample_rows={len(sample):,}")
+    logger.info(f"total_rows={total_rows:,} sample_rows={len(sample):,}")
     return dict(
         cont=cont, binr=binr, oper=oper, bc_cols=bc_cols,
         stats=stats, binsum=binsum, bincount=bincount,
@@ -222,7 +216,7 @@ def step_stream(files: list[Path], schema: dict):
 
 
 # --------------------------------------------------------------------------- #
-# 0.3 full stats
+# full stats
 # --------------------------------------------------------------------------- #
 def step_full_stats(R):
     rows = []
@@ -235,12 +229,12 @@ def step_full_stats(R):
     fs = pd.DataFrame(rows).sort_values("column")
     fs.to_csv(LOG_DIR / "full_stats.csv", index=False)
     fs.to_csv(TBL_DIR / "sensor_summary.csv", index=False)
-    logger.info(f"[0.3] full_stats.csv + sensor_summary.csv ({len(fs)} continuous cols)")
+    logger.info(f"full_stats.csv + sensor_summary.csv ({len(fs)} continuous cols)")
     return fs
 
 
 # --------------------------------------------------------------------------- #
-# 0.4 operational state analysis
+# operational state analysis
 # --------------------------------------------------------------------------- #
 def step_operational(R):
     sample = R["sample"]
@@ -276,12 +270,12 @@ def step_operational(R):
     fig.tight_layout()
     fig.savefig(EDA_DIR / "operational_state_distributions.png", dpi=150)
     plt.close(fig)
-    logger.info("[0.4] operational_state_analysis.csv + distribution plot")
+    logger.info("operational_state_analysis.csv + distribution plot")
     return osa
 
 
 # --------------------------------------------------------------------------- #
-# 0.5 failure/maintenance inventory
+# failure/maintenance inventory
 # --------------------------------------------------------------------------- #
 def _events_from_rows(rows, merge_gap_s=60):
     """rows: list of (timestamp, type). Returns fine activation windows: same
@@ -364,13 +358,13 @@ def step_events(R):
     n_brake = sum(1 for e in fail_events if e["type"] == "Brake System Failure")
     by_type = Counter(e["type"] for e in fail_events)
     logger.info(
-        f"[0.5] logical events (same-type, {GAP_H}h merge): {n_fail} failures "
+        f"logical events (same-type, {GAP_H}h merge): {n_fail} failures "
         f"({n_brake} brake) + {n_maint} maintenance | from "
         f"{len(fail_act)}+{len(maint_act)} fine activations"
     )
-    logger.info(f"[0.5] failure types: {dict(by_type)}")
+    logger.info(f"failure types: {dict(by_type)}")
     logger.info(
-        "[0.5] NOTE train is an 8.5-month subset; exposé full-year totals are "
+        "NOTE train is an 8.5-month subset; exposé full-year totals are "
         "11 failures (7 brake) / 18 maintenance — flagged for review"
     )
 
@@ -392,12 +386,12 @@ def step_events(R):
     fig.tight_layout()
     fig.savefig(EDA_DIR / "eda_failure_timeline.png", dpi=150)
     plt.close(fig)
-    logger.info("[0.5] event_inventory.csv + label_vocabularies.json + timeline plot")
+    logger.info("event_inventory.csv + label_vocabularies.json + timeline plot")
     return inv, fail_events, maint_events
 
 
 # --------------------------------------------------------------------------- #
-# 0.6 data quality
+# data quality
 # --------------------------------------------------------------------------- #
 def step_quality(R, fs):
     sample = R["sample"]
@@ -440,14 +434,14 @@ def step_quality(R, fs):
     pd.DataFrame(redundant, columns=["col_a", "col_b", "pearson_r"]).to_csv(
         LOG_DIR / "high_correlation_pairs.csv", index=False)
     logger.info(
-        f"[0.6] data_quality.csv + binary_sensor_stats.csv | "
+        f"data_quality.csv + binary_sensor_stats.csv | "
         f"{len(redundant)} continuous pairs with |r|>0.98"
     )
     return dq, bdf
 
 
 # --------------------------------------------------------------------------- #
-# 0.7 EDA plots
+# EDA plots
 # --------------------------------------------------------------------------- #
 def step_eda_plots(R, fs, dq, bdf):
     sample = R["sample"]
@@ -528,7 +522,7 @@ def step_eda_plots(R, fs, dq, bdf):
     fig.tight_layout()
     fig.savefig(EDA_DIR / "eda_seasonal_patterns.png", dpi=150)
     plt.close(fig)
-    logger.info("[0.7] EDA plots written (nulls, distributions, duty cycles, failure comparison, seasonal)")
+    logger.info("EDA plots written (nulls, distributions, duty cycles, failure comparison, seasonal)")
 
 
 def main():
