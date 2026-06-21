@@ -1,12 +1,12 @@
 import numpy as np
 import pandas as pd
 
-from metroat.braking_v2 import (
+from metroat.braking import (
     EVENT_FEATURE_NAMES,
     base_name,
     braking_events_from_windows,
     build_role_ledger,
-    event_features_v2,
+    event_features,
     feature_role,
     is_real_deceleration,
 )
@@ -50,12 +50,12 @@ def test_single_full_window_kept_partial_dropped():
     assert len(braking_events_from_windows(w2)) == 0
 
 
-def test_non_braking_ignored_v2():
+def test_non_braking_ignored():
     w = pd.DataFrame([_win(0, 9, "cruising"), _win(10, 19, "standing")])
     assert braking_events_from_windows(w).empty
 
 
-def test_event_features_v2_roles_and_values():
+def test_event_features_roles_and_values():
     # synthetic 1 Hz day: one 11 s braking event, decel ramps speed down
     n = 20
     t0 = pd.Timestamp("2024-06-01 00:00:00")
@@ -78,7 +78,7 @@ def test_event_features_v2_roles_and_values():
     })
     intervals = pd.DataFrame([dict(start=ts[0], end=ts[10], duration_s=11.0,
                                    n_windows=2, is_long=False)])
-    feats = event_features_v2(df, intervals)
+    feats = event_features(df, intervals)
     assert len(feats) == 1
     r = feats.iloc[0]
     assert abs(r["peak_deceleration"] - 0.05) < 1e-9      # -accel
@@ -154,5 +154,4 @@ def test_predictor_target_pools_disjoint():
 
 def test_event_feature_names_all_classified():
     led = build_role_ledger(EVENT_FEATURE_NAMES, level="event")
-    # no event feature should be unknown OTHER except none expected here
     assert (led.sensor_group == "OTHER").sum() == 0
