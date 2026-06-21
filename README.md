@@ -1,12 +1,12 @@
-# MetroAT — Operational State Recognition & Braking Behaviour Analysis
+# MetroAT - Operational State Recognition & Braking Behaviour Analysis
 
 Data-driven predictive-maintenance indicators from a one-year, 1 Hz pneumatic-system
 sensor dataset of a Wiener Linien metro train (TU Wien, *Instandhaltungsmanagement*).
 
-- **Phase 1** — unsupervised recognition of operational regimes from **kinematics only**
+- **Phase 1** - unsupervised recognition of operational regimes from **kinematics only**
   (K-means, k=4: standing / accelerating / cruising / braking) and validation against
   documented maintenance/failure events.
-- **Phase 2** — braking-event extraction, an honest (leakage-free) braking classifier from
+- **Phase 2** - braking-event extraction, an honest (leakage-free) braking classifier from
   the air-system sensors, a data-driven test of braking-intensity structure (a continuum,
   not classes), deceleration regression, and pre-failure analysis.
 
@@ -80,83 +80,79 @@ All stochastic operations use `random_state=42`. Streaming, one daily file at a 
 
 Plain-language definitions of every method used in the analysis.
 
-**Normalization / standardization** — Sensors come in different units and ranges. Each sensor is
+**Normalization / standardization** - Sensors come in different units and ranges. Each sensor is
 rescaled to be comparable (converting everyone's height and weight to "how many standard
 deviations above/below average" so neither dominates just because its numbers are bigger).
 
-**Clustering** — Letting the data sort itself into natural groups, without specifying the answer in
+**Clustering** - Letting the data sort itself into natural groups, without specifying the answer in
 advance (like sorting a pile of mixed coins into piles by size without being told the denominations).
 
-**k-means** — A clustering method: the number of groups *k* is specified; *k* "centres" are placed
+**k-means** - A clustering method: the number of groups *k* is specified; *k* "centres" are placed
 and each point is assigned to its nearest centre, then the centres are nudged until they settle.
 Fast and simple.
 
-**Hierarchical clustering + dendrogram** — Builds a family tree of the data by repeatedly merging
+**Hierarchical clustering + dendrogram** - Builds a family tree of the data by repeatedly merging
 the two closest groups. The tree (dendrogram) shows at what "distance" groups merge, which hints at
 how many real groups there are. Run on a sample because it is memory-heavy on millions of rows.
 
-**Choosing the number of groups (k):** the number of groups is not guessed — it is measured.
+**Choosing the number of groups (k):** the number of groups is not guessed - it is measured.
 
-- **Silhouette** — how tightly packed and well-separated the groups are (higher = cleaner; ~1 is
+- **Silhouette** - how tightly packed and well-separated the groups are (higher = cleaner; ~1 is
   perfect, ~0 means overlapping).
-- **Davies–Bouldin** — similar idea, lower = better.
-- **BIC / AIC** — score a statistical model that rewards fitting the data but penalises needless
+- **Davies–Bouldin** - similar idea, lower = better.
+- **BIC / AIC** - score a statistical model that rewards fitting the data but penalises needless
   complexity. A genuine "best k" shows up as a low point; if the score just keeps improving with
   more groups, there is no natural number of groups (a *continuum*).
-- **Bootstrap + Adjusted Rand Index (ARI)** — the data is redrawn many times, re-clustered, and
+- **Bootstrap + Adjusted Rand Index (ARI)** - the data is redrawn many times, re-clustered, and
   the groupings checked for agreement (ARI ≈ 1 = stable, ≈ 0 = random). Stability is the decisive
   test: pretty groups that don't survive resampling aren't real.
 
-**PCA (Principal Component Analysis)** — Squeezes many correlated sensors into a few summary axes
+**PCA (Principal Component Analysis)** - Squeezes many correlated sensors into a few summary axes
 that capture most of the variation (like summarising a detailed survey by its two or three main
 themes). Useful for plotting; PCA axes maximise variance, not class separation, so some
 discriminative signal can be lost.
 
-**Train / held-out split** — Models are fit on one part of the data and scored on a *different,
+**Train / held-out split** - Models are fit on one part of the data and scored on a *different,
 unseen* part. Scoring on data the model already saw would be like grading an exam with the answer
-key taped to it — meaningless.
+key taped to it - meaningless.
 
-**Decision tree / LDA / QDA** — Three transparent ways to draw the boundary between classes: a
+**Decision tree / LDA / QDA** - Three transparent ways to draw the boundary between classes: a
 decision tree asks a sequence of yes/no questions ("is pressure > x?"); LDA draws a straight
 dividing line; QDA allows a curved one. All three are reported so the result doesn't depend on one
 method's quirks.
 
 **Scoring a classifier:**
 
-- **Accuracy** — fraction correct. Misleading when one class is rare.
-- **Balanced accuracy** — accuracy averaged per class, so a rare class still counts.
-- **Precision** — of the cases flagged positive, how many really were.
-- **Recall** — of the real positives, how many were caught.
-- **F1** — the balance of precision and recall (one number).
-- **ROC-AUC** — probability the model ranks a real positive above a real negative; 0.5 = coin-flip,
-  1.0 = perfect.
-- **Confusion matrix** — the table of right/wrong calls per class.
+- **Accuracy** - fraction correct. Misleading when one class is rare.
+- **Balanced accuracy** - accuracy averaged per class, so a rare class still counts.
+- **Precision** - of the cases flagged positive, how many really were.
+- **Recall** - of the real positives, how many were caught.
+- **F1** - the balance of precision and recall (one number).
+- **ROC-AUC** - probability the model ranks a real positive above a real negative; 0.5 = coin-flip,  1.0 = perfect.
+- **Confusion matrix** - the table of right/wrong calls per class.
 
-**Regression & R²** — Predicting a number (not a class). **R²** is the fraction of the real
+**Regression & R²** - Predicting a number (not a class). **R²** is the fraction of the real
 variation the model explains: 0 = no better than always guessing the average, 1 = perfect. **MAE**
 is the average size of the error. Comparison is always made against a **baseline**
 (guess-the-average) so the number means something.
 
 **Comparing two groups of measurements:**
 
-- **Mann–Whitney U / Kolmogorov–Smirnov** — tests for whether two groups differ.
-- **p-value** — the chance of seeing a difference this big if there were truly none. With huge
+- **Mann–Whitney U / Kolmogorov–Smirnov** - tests for whether two groups differ.
+- **p-value** - the chance of seeing a difference this big if there were truly none. With huge
   samples, *even trivial differences get tiny p-values*, so a small p alone is not "important".
-- **Cliff's delta** — the *effect size*: how large the difference actually is (0 = none, ±1 = total
+- **Cliff's delta** - the *effect size*: how large the difference actually is (0 = none, ±1 = total
   separation). This is what is read, not the p-value alone.
-- **Bonferroni correction** — when many tests are run, the bar is tightened to avoid being fooled
+- **Bonferroni correction** - when many tests are run, the bar is tightened to avoid being fooled
   by chance.
 
-**CUSUM** — A cumulative drift alarm: it adds up small deviations from normal and raises a flag
+**CUSUM** - A cumulative drift alarm: it adds up small deviations from normal and raises a flag
 once they pile up, good at catching slow trends. **Lead time** = how far ahead of a failure it
 fired; **false-alarm rate** = how often it cries wolf.
 
-**SHAP** *(used in Phase 3)* — Explains a prediction by how much each sensor pushed it up or down,
-like an itemised receipt for the model's decision.
-
-**Leakage / circularity (the key idea behind this whole study)** — A predictor must never have
+**Leakage / circularity (the key idea behind this whole study)** - A predictor must never have
 helped define the thing it's predicting. If you label "hard braking" using deceleration and then
-"predict" that label using deceleration, you've just memorised your own definition — you'll score
+"predict" that label using deceleration, you've just memorised your own definition - you'll score
 ~100% and learn nothing. This is avoided by defining operational states from **motion only** and
 predicting them from the **air-system sensors only**, which never touched the definition.
 
