@@ -21,3 +21,20 @@ models/phase1/rf_feature_importance.joblib
 models/phase2/decel_regress_rf_deceleration.joblib
 models/phase2/decel_regress_rf_mean.joblib
 models/phase2/decel_regress_rf_peak.joblib
+
+# Poster: only the compiled PDF is published
+poster/assets/
+poster/*.typ
+
+# LaTeX build artifacts (report/ ships sources + the compiled PDF only)
+*.aux
+*.bcf
+*.run.xml
+*.bbl
+*.blg
+*.fls
+*.fdb_latexmk
+*.toc
+*.out
+*.synctex.gz
+report/*.log

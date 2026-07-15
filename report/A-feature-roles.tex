@@ -1,0 +1,74 @@
+\chapter{Feature roles}
+\label{app:roles}
+
+This appendix lists the assignment of MetroAT channels to the feature roles introduced in
+Section~\ref{sec:roles}. Only \emph{actuation} and \emph{auxiliary} channels are eligible as
+predictors; \emph{velocity} channels define the targets, and \emph{other} channels are used
+only for the train/held-out split, time alignment, and validation. Pneumatic channels are
+replicated per wagon (for example \texttt{\ldots\_BOGIE1}, \texttt{\ldots\_BOGIE2}); each entry
+below stands for the whole family of per-wagon copies, which are collapsed by principal
+component analysis (Figure~\ref{fig:pca}) where a compact input is required. The exhaustive,
+machine-readable assignment is stored in \texttt{feature\_roles.csv}.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Assignment of MetroAT channels to feature roles.}
+  \label{tab:approles}
+  \begin{tabularx}{\linewidth}{l l >{\RaggedRight}X}
+    \toprule
+    Role & Predictor & Channels \\
+    \midrule
+    velocity  & no  & train speed (\texttt{TRAIN\_SPEED\_ACTUAL}) and the derived acceleration,
+                      jerk, velocity-change-rate, and deceleration-energy features \\[1ex]
+    actuation & yes & brake-cylinder pressure, proportional-valve pressure
+                      (\texttt{*\_PROPORTIONAL\_VALVE\_PRESSURE\_*}), spring-brake pressure, and
+                      pneumatic braking force (\texttt{*\_PNEUMATIC\_BRAKING\_FORCE\_*}) \\[1ex]
+    auxiliary & yes & main-reservoir pressure, load pressure, load signal,
+                      energy-braking-resistance, ambient temperature, and compressor-running \\[1ex]
+    other     & no  & timestamps, operating-mode flags (\texttt{TRAIN\_*\_MODE}), and the
+                      failure and maintenance markers (\texttt{TRAIN\_IS\_IN\_FAILURE},
+                      \texttt{TRAIN\_IS\_IN\_MAINTENANCE}, \texttt{TRAIN\_FAILURE\_TYPE},
+                      \texttt{TRAIN\_MAINTENANCE\_TYPE}) \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Kinematic features}
+\label{app:kinematics}
+
+The operational states of Chapter~\ref{ch:states} are clustered from kinematic
+(\emph{velocity}-role) features alone. These rest on a single raw channel from the dataset,
+the train speed, from which acceleration, its absolute rate, and jerk are derived on the
+time-sorted 1\,Hz stream. All derivatives are $\Delta t$-aware (they use the actual time gap
+between consecutive samples) and are set to zero across gaps longer than 2\,s, so that
+out-of-service breaks do not create spurious spikes. Table~\ref{tab:kinematics} lists the four
+base signals with their origin and, where derived, their formula. Here $v_t$ is the normalised
+speed at sample $t$ and $\Delta t$ the interval to the previous sample (nominally 1\,s).
+
+\begin{table}[htbp]
+  \centering
+  \caption{The kinematic base signals: origin (raw dataset channel versus crafted) and, for the
+  crafted signals, their definition. All values are in the normalised units of the dataset;
+  rates are per second.}
+  \label{tab:kinematics}
+  \begin{tabularx}{\linewidth}{l l >{\RaggedRight}X}
+    \toprule
+    Signal & Origin & Definition \\
+    \midrule
+    train speed $v$ & dataset & raw channel \texttt{TRAIN\_SPEED\_ACTUAL}, min-max normalised
+      to $[0,1]$ \\[0.6ex]
+    acceleration $a$ & crafted & $a_t = \dfrac{v_t - v_{t-1}}{\Delta t}$ \\[1.2ex]
+    velocity-change rate & crafted & $\left| a_t \right| = \left| \dfrac{v_t - v_{t-1}}{\Delta t}
+      \right|$, the unsigned acceleration \\[1.2ex]
+    jerk $j$ & crafted & three-sample rolling mean of $\dfrac{a_t - a_{t-1}}{\Delta t}$
+      (the smoothed rate of change of acceleration) \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Each base signal is reduced to per-window summaries over the ten-second window. The clustering
+uses twelve window features: the mean and standard deviation of all four signals (eight
+features), together with the minimum and maximum of speed and of acceleration (four features).
+The event-level kinematic descriptors used for braking intensity in Chapter~\ref{ch:braking}
+(peak and mean deceleration, $\Delta v$, jerk peak and RMS, and the two deceleration-energy
+axes) are derived from the same speed channel and are defined where they are first used.

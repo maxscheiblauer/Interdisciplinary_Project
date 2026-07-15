@@ -1,0 +1,35 @@
+\chapter{Full classifier metrics}
+\label{app:clfmetrics}
+
+Table~\ref{tab:clfmetrics} reports every model scored in Chapter~\ref{ch:classification} on
+the held-out window, for both predictor tiers. The main text quotes ROC-AUC, balanced
+accuracy, and $F_1$; the precision and recall columns are added here to make the
+precision/recall trade-off explicit. Deceleration is the minority class (about 20\% of
+windows), so accuracy alone is misleading and balanced accuracy and ROC-AUC are the primary
+yardsticks. All numbers are read directly from
+\texttt{state\_classification\_metrics.csv}.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Deceleration classifiers on the held-out window, all models and both tiers,
+  ordered by ROC-AUC within tier. Precision, recall, and $F_1$ are for the deceleration
+  class.}
+  \label{tab:clfmetrics}
+  \begin{tabular}{llrrrrrr}
+    \toprule
+    Tier & Model & Acc. & Bal.\ acc. & Prec. & Recall & $F_1$ & ROC-AUC \\
+    \midrule
+    full & random forest      & 0.818 & 0.869 & 0.528 & 0.956 & 0.680 & 0.954 \\
+    full & LDA                & 0.877 & 0.726 & 0.858 & 0.473 & 0.610 & 0.924 \\
+    full & decision tree      & 0.754 & 0.825 & 0.449 & 0.945 & 0.609 & 0.910 \\
+    full & logistic reg.      & 0.750 & 0.817 & 0.444 & 0.929 & 0.601 & 0.908 \\
+    full & QDA                & 0.844 & 0.746 & 0.622 & 0.583 & 0.602 & 0.901 \\
+    \midrule
+    aux.\ only & random forest & 0.766 & 0.831 & 0.462 & 0.941 & 0.620 & 0.921 \\
+    aux.\ only & decision tree & 0.731 & 0.796 & 0.424 & 0.906 & 0.577 & 0.878 \\
+    aux.\ only & QDA           & 0.521 & 0.693 & 0.295 & 0.983 & 0.454 & 0.844 \\
+    aux.\ only & logistic reg. & 0.719 & 0.728 & 0.397 & 0.744 & 0.517 & 0.814 \\
+    aux.\ only & LDA           & 0.820 & 0.621 & 0.621 & 0.287 & 0.392 & 0.813 \\
+    \bottomrule
+  \end{tabular}
+\end{table}

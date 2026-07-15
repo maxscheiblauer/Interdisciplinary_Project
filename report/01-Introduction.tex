@@ -1,0 +1,42 @@
+\chapter{Introduction}
+\label{ch:introduction}
+Much rail maintenance still runs on fixed intervals: a component is inspected or replaced after
+a set mileage or time, regardless of how hard it has actually been used. That wastes healthy
+parts and still misses parts that fail early under unusual load. Predictive maintenance ties
+each intervention to the measured condition of the equipment instead, promising less wasted
+material and fewer unnecessary replacements. The friction brakes of a metro train are a good
+place to try this: the train brakes at almost every stop, hundreds of times a day, so the brake
+components are cycled constantly and any degradation should leave a large, repeating signal.
+This report analyses the MetroAT dataset~\cite{MetroAT:2026}: one year of 1\,Hz recordings from a
+single Wiener Linien metro train, covering the pneumatic system together with train speed and mode
+signals, and annotated with documented failure and maintenance events. All sensor values are
+min-max normalised, so the analysis works in relative rather than physical units. Following the
+project proposal, the work runs in two phases along the CRISP-DM cycle~\cite{WirthHipp:00}. The first recognises the
+train's operational regimes without supervision, clustering the motion signal into a small set of
+interpretable states. The second examines the braking that dominates mechanical wear: individual
+deceleration events are extracted, their intensity characterised, and braking behaviour tested for
+any trend ahead of documented brake-system failures.
+
+Four questions run through the report: (1) whether distinct operational regimes emerge from the
+motion data alone, without fixing their number in advance; (2) given those regimes, whether the
+air-system sensors can recover the deceleration regime using only signals that did not help define
+it; (3) whether deceleration intensity falls into discrete classes or forms a continuum, and how
+much of it the air-system sensors can explain; and (4) whether braking behaviour carries any
+detectable signal ahead of documented brake-system failures. The remainder of the report is organised by topic rather than by project phase.
+
+\textbf{Structure.} Chapter~\ref{ch:preprocessing} describes how the raw recordings become the
+analysis units and how the sensors are partitioned into feature roles.
+Chapter~\ref{ch:states} derives and validates four motion-only operational states.
+Chapter~\ref{ch:classification} tests whether the air-system sensors alone can recover the
+deceleration state. Chapter~\ref{ch:braking} extracts individual deceleration events and regresses
+their intensity and dissipated energy from the air sensors. Chapter~\ref{ch:failure} examines the
+link to documented failures and the maintenance calendar and reports a near-null pre-failure
+result. Chapter~\ref{ch:conclusion} draws the findings together and points to what is worth doing
+next.
+
+\textbf{Scope.} The conclusions are bounded by the data: a single train, an eight-and-a-half-month
+training window, and roughly ten documented failures, eight of them brake-system failures; the
+study is exploratory and not meant as a deployable failure detector. Differences between individual
+wagons are not analysed: the many near-duplicate per-wagon channels are instead collapsed by
+principal component analysis during preprocessing (Chapter~\ref{ch:preprocessing},
+Figure~\ref{fig:pca}).

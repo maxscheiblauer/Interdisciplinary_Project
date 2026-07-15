@@ -1,0 +1,124 @@
+\chapter{Classification}
+\label{ch:classification}
+
+The operational states of Chapter~\ref{ch:states} were defined from motion alone. This
+chapter asks the leakage-free question that motivates the whole design: can the
+\emph{air-system} sensors, which never touched that definition, recover the deceleration
+state on their own? If they can, deceleration leaves an independent fingerprint across the
+pneumatic system, which is the premise the later analysis rests on.
+
+\section{Setup}
+
+The target is the binary label \enquote{deceleration versus not} on ten-second windows.
+The motion channels that defined the target are excluded from the predictors entirely, in
+line with the role ledger (Section~\ref{sec:roles}). Two predictor tiers are compared:
+
+\begin{itemize}
+  \item \textbf{auxiliary only} (60 features): the channels classed \emph{auxiliary} in the
+        role ledger (Section~\ref{sec:roles}): the health and support channels (main-reservoir
+        and load pressure, load signal, energy-braking resistance, ambient temperature, and
+        compressor state). They are termed auxiliary because they never carry the brake command:
+        they report the state of the air system rather than the braking demand itself, so
+        recovering deceleration from them alone is the strictest test of independent signal.
+  \item \textbf{full} (180 features): the auxiliary channels together with the \emph{actuation}
+        channels (the brake command and its immediate pneumatic response), which, unlike the
+        auxiliary channels, are driven directly by the braking demand.
+\end{itemize}
+
+Several transparent models are fitted so that the result does not hinge on one method's
+quirks: a decision tree, LDA, QDA, logistic regression, and a random forest. All are
+trained on the training window and scored on the held-out window
+(Section~\ref{sec:split}). Because deceleration is the minority class (about 20\% of
+windows), balanced accuracy and ROC-AUC are read in preference to raw accuracy.
+
+\section{Results}
+
+The headline numbers are in Table~\ref{tab:clf}. The full-tier random forest reaches a
+ROC-AUC of 0.954 on held-out data, with balanced accuracy 0.869 and recall 0.956 for the
+deceleration class. Its precision is lower, 0.528: the model catches almost all
+decelerations but also flags a fair number of non-decelerations, which is the expected
+trade-off when recall is high on a minority class and is the reason balanced accuracy and
+AUC are the yardsticks here rather than precision alone. LDA and the decision tree follow
+closely (AUC 0.924 and 0.910); the decision tree is the simplest model yet lands near the
+top, making it the most interpretable strong option. QDA reaches 0.901 and logistic
+regression 0.908. Full per-model metrics for both tiers are collected in
+Appendix~\ref{app:clfmetrics}.
+
+The auxiliary-only tier result is the most interesting. With the brake command \emph{withheld}, the
+random forest still reaches AUC 0.921. Deceleration therefore leaves a fingerprint across
+the independent health sensors (reservoir pressure, load pressure, and the rest) even
+without being told the brake was applied. Most of the recoverable signal lives in the
+auxiliary channels, not only in the actuation channels, which is what makes the pneumatic
+system a plausible place to look for wear.
+
+\subsection*{Which channels carry the signal}
+\label{sec:clf-importance}
+
+The interpretable models agree on where the deceleration signal sits. The decision tree
+puts almost all of its weight on a single channel, pneumatic braking force, with spring-brake
+pressure and proportional-valve pressure filling in the lower splits
+(Table~\ref{tab:clfimp}). LDA spreads its weight more evenly but ranks the same subsystem
+first: the per-wagon pneumatic-braking-force and proportional-valve-pressure copies dominate
+its discriminant, with reservoir pressure the strongest auxiliary contributor. QDA exposes
+no single loading vector, but it reaches comparable AUC on the same channel pool, so all
+three lean on the same part of the pneumatic system. The channels that matter are the ones
+that actuate and support braking, and none of them entered the motion-only state definition.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Top air-system channels for the full-tier classifiers. The decision-tree column
+  is the split importance; the LDA column is the standardised discriminant weight
+  ($|\text{coef}|$). Per-wagon copies are collapsed to their channel family.}
+  \label{tab:clfimp}
+  \begin{tabular}{lrr}
+    \toprule
+    Channel (family) & Decision tree & LDA $|\text{coef}|$ \\
+    \midrule
+    pneumatic braking force        & 0.69 & high \\
+    spring-brake pressure          & 0.14 & low \\
+    proportional-valve pressure    & 0.11 & highest \\
+    energy-braking resistance      & 0.05 & low \\
+    main-reservoir pressure        & 0.00 & moderate \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Deceleration classification on the held-out window. The full-tier random forest
+  leads; the auxiliary-only random forest, with the brake command withheld, is nearly as
+  strong. AUC is measured against 0.5 (coin flip); balanced accuracy against per-class
+  chance.}
+  \label{tab:clf}
+  \begin{tabular}{llrrr}
+    \toprule
+    Tier & Model & ROC-AUC & Balanced acc. & $F_1$ (decel.) \\
+    \midrule
+    full          & random forest & 0.954 & 0.869 & 0.680 \\
+    full          & LDA           & 0.924 & 0.726 & 0.610 \\
+    full          & decision tree & 0.910 & 0.825 & 0.609 \\
+    full          & QDA           & 0.901 & 0.746 & 0.602 \\
+    auxiliary only & random forest & 0.921 & 0.831 & 0.620 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.9\linewidth]{state_clf_comparison.png}
+  \caption{Model comparison for deceleration recovery (held-out AUC and $F_1$). The
+  full-tier random forest leads; the auxiliary-only tier, without the brake command,
+  remains close.}
+  \label{fig:clfcomparison}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.85\linewidth]{state_clf_confusion.png}
+  \caption{The four most informative confusion matrices on the held-out window
+  (row-normalised). The full-tier random forest catches almost every deceleration at the
+  cost of some false positives; LDA is the opposite, precise but conservative; the decision
+  tree sits between them; and the auxiliary-only random forest, with the brake command
+  withheld, keeps the same shape, showing the signal survives without actuation channels.}
+  \label{fig:confusion}
+\end{figure}

@@ -45,6 +45,8 @@ data/processed/     cleaned per-day features + windowed datasets (gitignored; re
 models/{phase1,2}/  scalers, K-means, classifiers/regressors (joblib)
 results/{plots,tables}/   all figures and tables produced by the scripts
 logs/               run logs; written on each run, safe to delete
+report/             LaTeX source and compiled PDF of the written project report
+poster/poster.pdf   project poster (PDF)
 ```
 
 `inputs/` holds three files the pipeline reads but does not regenerate: `schema.json`
@@ -54,6 +56,17 @@ pre-failure behaviour), and `pca.joblib`. The last is a PCA fitted on the pneuma
 sensors, kept so the report step can draw the explained-variance figure without
 refitting. Delete any of the three and the pipeline stops: the schema and event list
 break every phase, the PCA file breaks one report figure.
+
+## Report and poster
+
+The written report is in [`report/`](report/) as LaTeX source plus a compiled
+[`report/main.pdf`](report/main.pdf). Rebuild it with any TeX distribution:
+
+```bash
+cd report && latexmk -pdf main.tex     # pdflatex + biber
+```
+
+A one-page summary poster is at [`poster/poster.pdf`](poster/poster.pdf).
 
 ## Environment
 

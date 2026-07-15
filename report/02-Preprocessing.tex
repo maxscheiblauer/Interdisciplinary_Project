@@ -1,0 +1,126 @@
+\chapter{Preprocessing}
+\label{ch:preprocessing}
+
+This chapter describes how the raw MetroAT recordings became the units of analysis, and
+the design choices along the way that affect every later result.
+
+\section{The dataset}
+
+MetroAT~\cite{MetroAT:2026} is delivered as Parquet, so no conversion from CSV was needed.
+The schema has 109 columns: 74 continuous sensor channels, 20 binary channels, 7
+operational-mode signals, 4 failure and maintenance markers, and 4 timestamp columns. The
+recordings run at 1\,Hz over roughly one year.
+
+Several properties of the data shaped the processing:
+
+\begin{itemize}
+  \item \textbf{Normalised values.} All sensor channels are min-max normalised to
+        approximately $[0,1]$; they are not physical units. Every threshold used in this
+        study is therefore empirical or quantile-based, and no number in this report should
+        be read as bar, \si{\metre\per\second\squared}, or \si{\kilo\pascal}.
+  \item \textbf{Unsorted rows.} Rows are not guaranteed to be time-sorted within a daily
+        file, so each file is sorted on load before any derivative is computed.
+  \item \textbf{Streaming.} The data is processed one daily file at a time, keeping peak
+        memory below 4\,GB rather than loading the full year at once.
+  \item \textbf{Per-wagon replication.} Many pneumatic channels are duplicated across
+        wagons, producing 214 sensor pairs with $|r| > 0.98$. No columns are deleted by
+        hand. Instead, where a compact input is needed, principal component analysis is
+        applied to the pneumatic set and the leading components are used in place of the raw
+        channels; because so many channels are near-duplicates, a handful of components
+        already captures most of the variance (Figure~\ref{fig:pca}).
+\end{itemize}
+
+\section{Train and held-out split}
+\label{sec:split}
+
+Models are fitted on a training window (June 2024 to 11 February 2025, about 14.3~million
+rows) and scored on a held-out window from 12 February to June 2025 that the models never
+see during fitting. Every out-of-sample figure reported later therefore comes from the
+held-out window. The training window contains 10 documented failures and 11 maintenance
+events, 8 of the failures being brake-system failures; these small counts are what make the
+pre-failure analysis of Chapter~\ref{ch:failure} exploratory rather than conclusive.
+
+\section{Windowing}
+\label{sec:windowing}
+
+The unit of analysis is a non-overlapping ten-second window. The roughly 30~million raw
+rows reduce to about 1.49~million windows. For each window, summary statistics are computed
+per channel (means and standard deviations, and minima and maxima for the kinematic
+channels), so that each window carries a compact description of both motion and
+air-system behaviour over its ten seconds. The ten-second choice is a compromise between
+resolution and stability; its robustness is examined directly in
+Section~\ref{sec:window-sensitivity}.
+
+\section{Derived kinematics}
+
+Train speed is the only raw motion channel. From it, acceleration is derived as the rate
+of change of speed and jerk as the rate of change of acceleration. These derived channels,
+summarised per window, are the sole basis for the operational states of
+Chapter~\ref{ch:states}. Keeping the state definition to motion alone is the concrete
+consequence of the feature-role split introduced in Section~\ref{sec:roles}.
+
+\section{Feature roles}
+\label{sec:roles}
+
+This project runs clustering, classification, and regression over the \emph{same} set of
+MetroAT columns: the operational states of Chapter~\ref{ch:states} are clustered from the
+data, and later chapters predict those states and their braking intensity from it again.
+Whenever the same columns can both define a target and be offered as predictors, leakage
+becomes a real risk: a predictor that helped define the very thing it is asked to predict
+will score near-perfectly and reveal nothing. To avoid this, every feature is assigned a
+\emph{role} in a ledger (\texttt{feature\_roles.csv}) that fixes whether it may serve as a
+predictor. The columns are split as follows:
+
+\begin{itemize}
+  \item \textbf{velocity}: the motion channels (speed, acceleration, jerk, and the derived
+        deceleration-energy axis). These \emph{define} the operational states and the
+        braking targets, so they are used only as targets and never as predictors.
+  \item \textbf{actuation}: the brake command and its immediate pneumatic response
+        (brake-cylinder pressure, proportional-valve pressure, spring-brake pressure,
+        pneumatic braking force). Predictor-eligible, but closely tied to the brake demand.
+  \item \textbf{auxiliary}: independent health channels that do not carry the brake command
+        directly (main-reservoir pressure, load pressure, load signal,
+        energy-braking-resistance, ambient temperature, compressor-running).
+        Predictor-eligible, and the cleanest source of independent signal.
+  \item \textbf{other}: timestamps, operating-mode flags, and failure/maintenance markers,
+        used for the train/held-out split, time alignment, and validation, but never as
+        predictors.
+\end{itemize}
+
+Table~\ref{tab:roles} summarises the ledger by role. The distinction between
+\emph{actuation} and \emph{auxiliary} matters most in Chapter~\ref{ch:classification},
+where the two are tested as separate predictor tiers: because the auxiliary channels never
+touched the brake command, their ability to recover the deceleration state is the cleanest
+test that the air system carries genuinely independent signal. The complete assignment of
+channels to roles is listed in Appendix~\ref{app:roles}.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Sensor roles from the role ledger, aggregated across the window-level and
+  event-level feature sets. Only \emph{actuation} and \emph{auxiliary} features are
+  predictor-eligible; \emph{velocity} features define the targets and are never used as
+  predictors.}
+  \label{tab:roles}
+  \begin{tabular}{lll}
+    \toprule
+    Role       & Predictor-eligible & Example channels \\
+    \midrule
+    velocity   & no  & train speed, acceleration, jerk, deceleration energy \\
+    actuation  & yes & brake-cylinder / proportional-valve / spring-brake pressure, \\
+               &     & pneumatic braking force \\
+    auxiliary  & yes & main-reservoir pressure, load pressure, load signal, \\
+               &     & energy-braking-resistance, ambient temperature, compressor \\
+    other      & no  & timestamps, operating-mode flags, failure / maintenance markers \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.8\linewidth]{pca_explained_variance.png}
+  \caption{Cumulative explained variance of the pneumatic sensor set under PCA. Because 214
+  sensor pairs are near-duplicates ($|r| > 0.98$) from per-wagon replication, a small number
+  of components captures most of the variation, which is why the redundancy can be absorbed
+  by PCA without dropping any columns.}
+  \label{fig:pca}
+\end{figure}

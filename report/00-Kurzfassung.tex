@@ -1,0 +1,31 @@
+\chapter*{Kurzfassung}
+
+Diese Arbeit entwickelt datengetriebene Indikatoren für die vorausschauende Instandhaltung
+des Pneumatiksystems eines Metro-Zuges auf Basis des MetroAT-Datensatzes: ein Jahr an
+Sensoraufzeichnungen mit 1\,Hz und Min-Max-Normalisierung von einem einzelnen Zug der
+Wiener Linien. Die Analyse folgt einem methodischen Grundprinzip: der Vermeidung von
+Leakage bzw. Zirkularität. Betriebszustände werden ausschließlich aus der Bewegung
+definiert, sodass die Sensoren des Luftsystems, die nicht in diese Definition eingehen, als
+unabhängige Evidenz erhalten bleiben.
+
+Das Clustern der Bewegungsmerkmale liefert vier Betriebszustände: Stillstand (48\%),
+Bremsen (20\%), Fahren (17\%) und Beschleunigen (14\%). Die Clusteranzahl $k=4$ wurde über
+die größte Verbesserung des Informationskriteriums gewählt und erwies sich unter
+Resampling als stabil. Die Beschränkung der Zustandsdefinition auf die Bewegung korrigierte
+einen früheren Fehler, bei dem ein stehender Zug mit angelegter Bremse fälschlich als
+Bremsen eingestuft wurde; der korrigierte Bremszustand ist zu 99,9\% echt. Auf
+zurückgehaltenen Daten erkennen die Luftsystem-Sensoren den Bremszustand mit einer ROC-AUC
+von 0,95, und von 0,92 selbst dann, wenn das Bremssignal weggelassen und nur unabhängige
+Zustandssensoren verwendet werden. Das Bremsen hinterlässt also einen Fingerabdruck im
+gesamten Pneumatiksystem.
+
+Die Bremsintensität wurde auf Klassenstruktur geprüft und erwies sich als Kontinuum, nicht
+als Menge diskreter Klassen. Ein Gradient-Boosted-Tree erklärt außerhalb der Stichprobe
+einen mäßigen Anteil der Intensität aus den Nicht-Geschwindigkeitssensoren
+($R^2 \approx 0{,}43$--$0{,}47$, gegen eine Mittelwert-Baseline) und rund 83\% der pro Halt
+dissipierten spezifischen Energie. Schließlich wurde das Bremsverhalten auf ein Signal vor
+dokumentierten Bremssystem-Ausfällen untersucht. Über Effektstärken-, Change-Point- und
+Energieanalysen hinweg ist das Ergebnis nahezu null; mit nur acht Bremsausfällen ist die
+Studie explorativ und liefert keinen einsetzbaren Ausfalldetektor. Das negative Ergebnis
+legt nahe, dass sich Bremsfehler eher während der Lade- und Ruhephasen als während des
+Bremsens zeigen, also in die Richtung, die eine Folgeuntersuchung einschlagen sollte.

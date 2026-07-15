@@ -1,0 +1,96 @@
+\chapter{Analysis of braking events}
+\label{ch:braking}
+
+
+\section{Events}
+
+A deceleration event is one continuous stretch of the deceleration state; the training window
+yields about 126{,}700, of which 99.9\% are genuine decelerations once the held-brake
+contamination was removed (Section~\ref{sec:heldbrake}). The mean event lasts 23.4\,s and the
+median 20\,s (95th percentile 30\,s): mostly ordinary station stops, with a thin tail of longer
+ones.
+
+\section{Classes or continuum?}
+\label{sec:continuum}
+
+The original plan anticipated discrete braking classes: light, hard, emergency. The data was
+allowed to decide instead. Clustering the intensity features and reading BIC, silhouette, and
+resampling stability together turns up no natural class count: the BIC keeps improving as
+clusters are added rather than settling at a minimum, and the silhouette never singles out a $k$
+(Figure~\ref{fig:continuum}). Stability does rise again at $k=5$, which looks stable at a glance
+but survives only by peeling off a cluster holding a few hundredths of a percent of the events,
+unsupported by BIC or silhouette: the bump is an artefact of one tiny outlier group, not a regime.
+The intensity histogram seems to pull the other way, with a dominant mild mode and a broader hump
+at firmer braking (Figure~\ref{fig:intensity}), so on its own the density looks bimodal. But the
+humps overlap without a clean gap, and the resampling scrambles any boundary drawn between them,
+so the clustering never confirms the visual split. That tension is left as an open question; on
+the available evidence the report treats intensity as a continuum, varying by degree rather than
+by kind. No light/hard/emergency labels are introduced, then. Any such split is an \emph{operational
+threshold} to be set with domain input, not a structure the data volunteers.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth]{cluster_model_selection.png}
+  \caption{Model selection for braking intensity. BIC keeps improving with more groups and
+  the silhouette falls away, so there is no natural number of intensity classes. The
+  resampling stability rises again at $k=5$, but that solution only splits off a negligibly
+  small cluster and no other criterion supports it, so the bump carries no interpretable
+  meaning: intensity is a continuum.}
+  \label{fig:continuum}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=1\linewidth]{intensity_distribution.png}
+  \caption{Distribution of deceleration intensity. A dominant mild mode and a broader
+  firmer-braking hump overlap without a clean gap; the cluster tests find no stable boundary
+  between them, so intensity is treated as a continuum rather than as discrete classes.}
+  \label{fig:intensity}
+\end{figure}
+
+\section{A deceleration-energy axis}
+\label{sec:energy}
+
+To compare stops on a physical scale, a specific deceleration energy is derived,
+$\tfrac{1}{2}(v_0^2 - v_1^2)$, the kinetic energy dissipated per stop per unit mass. Being
+kinematic, it carries the role \emph{velocity} and serves only as a target, never a predictor.
+Adding it to the intensity features does not create classes (the continuum of
+Section~\ref{sec:continuum} is unchanged) but gives a common wear axis, putting every stop on the
+same energy-dissipated scale. The air-system sensors explain about 85\% of a stop's specific
+energy out-of-sample (full tier, random forest), so the pneumatic record tracks dissipated energy
+closely even without seeing the speed.
+
+\section{Intensity regression}
+\label{sec:regression}
+
+The central cross-modal test predicts deceleration \emph{magnitude} from the non-speed sensors on
+held-out events, against a guess-the-average baseline ($R^2 \approx 0$ by construction). A random forest on the full tier reaches $R^2 \approx 0.43$ for peak and $0.57$ for mean
+deceleration; a linear model manages only 0.24 and 0.20, so most of the signal is non-linear
+structure a straight fit misses. These are moderate results: the pneumatic sensors carry real but
+partial information about how hard the train braked, not a near-perfect reconstruction. The scatter of predicted against actual intensity (Figure~\ref{fig:regscatter}) is positively
+associated but sits in a narrower band than the targets: the gentlest stops are pushed up and the
+hardest pulled down, flattening the cloud against the diagonal. This is regression toward the
+average, where a squared-error model retreats when the inputs leave real variance unexplained, and
+the per-event pneumatic signal is that noisy. Two other explanations were checked and rejected. Not sensor saturation: the actuation pressures
+stay well inside range on hard stops, with only one to two percent of events near a ceiling. Not
+the ten-second windowing either: adding event duration to the predictors moves $R^2$ by less than
+a percentage point. The model did matter. A gradient-boosted tree scores 0.47 on mean deceleration
+in a tighter band; the random forest reaches 0.57 and widens the spread by about a fifth, since
+deep independent trees reach more extreme conditional means than a shallow boosted ensemble. Peak
+deceleration holds at 0.43 either way, so its residual band is the limit of what these sensors
+carry, not a model shortcoming. Both panels of Figure~\ref{fig:regscatter} use the random forest. A Lasso fit with its penalty cross-validated on the training events keeps 19 of the 22 air-system
+features ($\alpha \approx 4\times10^{-6}$), a mix of actuation and auxiliary channels spread across
+subsystems rather than concentrated in the brake command. The near-minimal penalty and broad
+selection say the intensity signal is distributed, not localised, matching the auxiliary-only
+classification result of Chapter~\ref{ch:classification}.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth]{decel_regression_scatter.png}
+  \caption{Predicted versus actual deceleration intensity on held-out events (full tier,
+  random forest). The association is positive, but predictions sit in a narrower band than
+  the targets: the gentlest stops are over-predicted and the hardest under-predicted, the
+  regression-toward-the-average that remains once the pneumatic sensors have given up their
+  partial signal.}
+  \label{fig:regscatter}
+\end{figure}

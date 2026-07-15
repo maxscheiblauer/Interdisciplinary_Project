@@ -1,0 +1,36 @@
+\chapter{Conclusion}
+\label{ch:conclusion}
+
+Motion alone splits a year of running into four operational states (standing, accelerating,
+cruising, deceleration), and the air-system sensors, held out of that definition, recover the
+deceleration state on their own: a random forest reaches ROC-AUC 0.95 on held-out data, and
+0.92 even with the brake command withheld. Deceleration therefore leaves an independent
+fingerprint across the pneumatic system. Its intensity is a continuum rather than a set of
+classes, and the same sensors explain a moderate share of it out-of-sample (peak $R^2 \approx
+0.43$, mean $0.57$) and about 85\% of a stop's dissipated energy. The link to failures is an
+honest negative: neither the effect-size tests, the change-point detector on the strongest
+channel, nor the energy-versus-maintenance view separates the pre-failure period from baseline
+at only eight brake failures. Two soft hints survive, a small residual effect in the auxiliary
+channels rather than the braking kinematics, and a clean split in which every maintenance gap
+longer than about three weeks coincided with a failure. Both point to where a future search
+might look; neither is a detector.
+
+The one open method question from Chapter~\ref{ch:braking} is now settled. Cross-validating
+the Lasso penalty (five-fold, on the training events only, so no held-out data leaks into the
+choice) selects a small penalty ($\alpha \approx 4\times10^{-6}$) and keeps 19 of the 22
+air-system channels. The intensity signal is spread across subsystems, not carried by the
+brake command alone.
+
+Four directions follow, three concrete and one broad. First, the off-curve outliers in the
+velocity--acceleration cycle (Section~\ref{sec:fourstates}) were never characterised and may
+flag unusual operating conditions. Second, the per-wagon sensor copies were collapsed rather
+than compared; differences between wagons could localise where wear develops. Third, the
+pre-failure tests should be repeated on the standing and cruising states, where charging and
+idle behaviour (compressor duty cycle, reservoir recharge, spring-brake pressure at rest) is
+most visible and where brake faults are likeliest to actually show. Underlying all three is
+the reason none of them is guaranteed to pay off: this study found no dependable indicator of
+physical wear, and a dataset with many more documented failures is what would let any of these
+turn a hint into evidence.
+
+The full pipeline, from raw recordings to the figures and tables in this report, is available
+on GitHub so the analysis can be reproduced end to end.\footnote{\url{https://github.com/maxscheiblauer/Interdisciplinary_Project}}

@@ -151,9 +151,9 @@ def fig_state_profiles() -> None:
     prof = pd.read_csv(TBL / "cluster_profiles.csv")
     prof = prof.set_index("label").reindex(STATE_ORDER)
     colors = [STATE_COLOR[s] for s in STATE_ORDER]
-    metrics = [("velocity_mean", "Median velocity"),
-               ("accel_mean", "Median acceleration"),
-               ("jerk_mean", "Median jerk")]
+    metrics = [("velocity_mean", "(a) Median velocity"),
+               ("accel_mean", "(b) Median acceleration"),
+               ("jerk_mean", "(c) Median jerk")]
     fig, axes = plt.subplots(1, 3, figsize=(13, 4.4))
     for ax, (col, title) in zip(axes, metrics):
         ax.bar(STATE_ORDER, prof[col].to_numpy(), color=colors)

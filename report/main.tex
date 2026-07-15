@@ -1,0 +1,166 @@
+% =========================================================================
+%  Project report — single-file setup.
+%  Operational State Recognition and Braking Behaviour Analysis
+%  for Predictive Maintenance on Metro Trains
+%
+%  Compile with:  pdflatex -> biber -> pdflatex -> pdflatex
+% =========================================================================
+\documentclass[11pt,a4paper,twoside]{report}
+
+% ---------- encoding & fonts ----------
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage[english]{babel}
+
+% ---------- page geometry ----------
+\usepackage[a4paper,inner=3.0cm,outer=2.5cm,top=2.7cm,bottom=2.7cm]{geometry}
+\usepackage{setspace}
+\onehalfspacing
+
+% ---------- discourage widows / orphans ----------
+\clubpenalty=10000
+\widowpenalty=10000
+\displaywidowpenalty=10000
+
+% ---------- maths, units, tables ----------
+\usepackage{amsmath,amssymb}
+\usepackage{siunitx}
+\sisetup{output-decimal-marker={.},range-phrase={--},group-separator={\,}}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{etoolbox}
+\usepackage{titlesec}
+
+\captionsetup{skip=10pt}
+\usepackage{tabularx}
+\usepackage{ragged2e}
+\usepackage{multirow}
+
+% ---------- graphics ----------
+\usepackage{graphicx}
+\graphicspath{{Bilder/}}
+\usepackage{xcolor}
+\definecolor{linkblue}{HTML}{264B96}
+
+% ---------- quotations ----------
+\usepackage[autostyle,english=american]{csquotes}
+
+% ---------- bibliography ----------
+\usepackage[style=numeric-comp,backend=biber,maxcitenames=2,maxbibnames=99,giveninits=true]{biblatex}
+\addbibresource{Literatur.bib}
+
+% ---------- headers / footers: page number on EVERY page ----------
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[LE]{\small\nouppercase{\leftmark}}
+\fancyhead[RO]{\small\nouppercase{\rightmark}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+% chapter-opening pages ("plain") also carry the footer page number
+\fancypagestyle{plain}{%
+  \fancyhf{}%
+  \fancyfoot[C]{\thepage}%
+  \renewcommand{\headrulewidth}{0pt}%
+}
+
+% ---------- blank filler pages carry no header/footer ----------
+\usepackage{emptypage}
+
+% ---------- hyperlinks (load last) ----------
+\usepackage[colorlinks=true,linkcolor=linkblue,citecolor=linkblue,urlcolor=linkblue]{hyperref}
+
+% ---------- title metadata ----------
+\newcommand{\thetitleEN}{Operational State Recognition and Braking Behaviour Analysis for Predictive Maintenance on Metro Trains}
+\newcommand{\figspace}{\vspace{0.5cm}}
+
+\titleformat{\chapter}[hang]
+  {\normalfont\Huge\bfseries}{\thechapter}{0.6em}{}
+\titlespacing*{\chapter}{0pt}{0pt}{20pt}
+
+\begin{document}
+
+% =========================================================================
+%  Title page
+% =========================================================================
+\begin{titlepage}
+\centering
+\thispagestyle{empty}
+\noindent\hspace*{-1.5cm}%
+\begin{minipage}[c]{0.5\textwidth}
+    \centering
+    \includegraphics[height=1.35cm]{R.png}
+\end{minipage}%
+\hfill
+\begin{minipage}[c]{0.5\textwidth}
+    \centering
+    \includegraphics[height=2.7cm]{imw_logo-1.png}
+\end{minipage}
+\hspace*{-1.5cm}
+
+
+\vspace*{1.5cm}
+{\scshape\large Technische Universit\"at Wien\par}
+\vspace{0.3cm}
+{\scshape Interdisciplinary Project Report\par}
+\vspace{1.7cm}
+\rule{\linewidth}{0.4pt}\par
+\vspace{0.9cm}
+{\LARGE\bfseries \thetitleEN \par}
+\vspace{0.9cm}
+\rule{\linewidth}{0.4pt}\par
+\vspace{1.7cm}
+{\large\bfseries Maximilian Scheiblauer, BSc\par}
+{\normalsize Matriculation Number 11776651\par}
+\vspace{2cm}
+{\normalsize
+\begin{tabular}{r l}
+Supervisors: & Dipl.-Ing.\ Andreas Steiner, Institut f\"ur Managementwissenschaften \\
+             & Dr.\ Florina Piroi, Institut f\"ur Information Systems Engineering \\
+\end{tabular}\par}
+\vspace{1cm}
+{\large July 2026\par}
+\end{titlepage}
+
+% =========================================================================
+%  Front matter — roman page numbers
+% =========================================================================
+
+
+% single-space the TOC so title page + contents stay within two pages
+\begingroup
+\singlespacing
+\tableofcontents
+\endgroup
+
+% =========================================================================
+%  Main matter — arabic page numbers, restart at 1
+% =========================================================================
+
+\pagenumbering{arabic}
+\setcounter{page}{0}
+
+\input{01-Introduction}
+\input{02-Preprocessing}
+\input{03-States}
+\input{04-Classification}
+\input{05-Braking}
+\input{06-Failure-Maintenance}
+\input{07-Conclusion}
+\printbibliography[heading=bibintoc]
+% =========================================================================
+%  Appendix
+% =========================================================================
+\appendix
+\input{A-feature-roles}
+\input{B-classifier-metrics}
+
+% =========================================================================
+%  Bibliography
+% =========================================================================
+
+
+\end{document}

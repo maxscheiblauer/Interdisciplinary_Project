@@ -1,0 +1,125 @@
+\chapter{Connection to failure events and maintenance}
+\label{ch:failure}
+
+The preceding chapters established that motion defines four operational states, that the
+air-system sensors independently recover the deceleration state, and that they explain a
+moderate share of braking intensity. This chapter turns to the question behind predictive
+maintenance: does braking behaviour change in the days before a documented brake-system failure?
+The evidence points to a near-null answer, reported here as a genuine negative rather than
+qualified away.
+
+\section{Setup}
+
+The training window contains 10 documented failures (8 brake-system) and 11 maintenance events.
+Deceleration events in the seven days before any brake failure form a pre-failure group (about
+23{,}000 events), compared against a baseline more than 30 days from any failure (about 44{,}000).
+Ten event-level features are tested, spanning the kinematic intensity measures and the auxiliary
+health channels.
+
+\section{Distributional test}
+\label{sec:prefailure-test}
+
+Each feature is compared between the pre-failure and baseline groups with a Mann--Whitney $U$
+test~\cite{MannWhitney:47}, a rank-based test that asks whether values from one group tend to exceed the other without
+assuming normality: it ranks the pooled values and counts, over every cross-group pair, how often
+the pre-failure value is larger. Under the null that count is about $n_1 n_2 / 2$, and the
+$p$-value measures the departure from it. With ten features tested, the $p$-values are
+Bonferroni-corrected: at $m=10$ and $\alpha = 0.05$ a feature counts as significant only if its
+raw $p$ falls below $\alpha/m = 0.005$, capping the family-wide false-positive chance at $\alpha$.
+With more than 23{,}000 pooled events almost every feature clears that bar, which means little
+here: at this sample size even trivial differences drive $p$ to zero. What is read instead is the
+effect size, Cliff's delta~\cite{Cliff:93}, where $0$ is no separation and $\pm 1$ total, with $|\delta| < 0.15$
+treated as negligible.
+
+The result is near-null (Table~\ref{tab:prefailure}). The kinematic and braking-command features
+(peak and mean deceleration, deceleration energy, brake-cylinder and pneumatic-braking-force
+channels) all sit at $|\delta| < 0.06$, effectively no separation despite significant $p$-values.
+Only energy-braking-resistance clears the threshold, at $|\delta| \approx 0.20$; the next largest,
+load pressure at $\approx 0.10$, stays negligible. Even that effect is small and rests on only
+eight brake failures, so it cannot support a prediction claim on its own. It does hint at
+\emph{where} any signal might live, in the auxiliary channels rather than the deceleration
+kinematics, a point the conclusion returns to.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Pre-failure versus baseline effect sizes (Cliff's delta), top 7 $|\delta|$
+  values. The braking-kinematic features are negligible; only one auxiliary channel
+  (energy-braking-resistance) rises above $|\delta| = 0.15$, and even that is small and rests
+  on eight brake failures. Negative $\delta$ means lower values before failure.}
+  \label{tab:prefailure}
+  \begin{tabular}{lrc}
+    \toprule
+    Feature & Cliff's $\delta$ & Above negligible ($|\delta|>0.15$)? \\
+    \midrule
+    energy-braking-resistance (mean)   & $-0.201$ & yes \\
+    load pressure (mean)               & $-0.103$ & no  \\
+    jerk RMS                           & $+0.054$ & no  \\
+    brake-cylinder pressure (integral) & $-0.040$ & no  \\
+    deceleration energy (specific)     & $-0.039$ & no  \\
+    pneumatic braking force (mean)     & $-0.032$ & no  \\
+    peak deceleration                  & $-0.005$ & no  \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Change-point detection}
+\label{sec:changepoint}
+
+As an independent check, a CUSUM (cumulative-sum) change-point detector~\cite{Page:54} was run on the strongest
+signal from the previous section, the weekly mean of energy-braking-resistance
+(Figure~\ref{fig:cusum}). One design choice matters here and applies to this figure alone. The raw
+weekly proxy climbs almost monotonically across the year, which would only make sense if brake wear
+never reversed. Assuming the brakes are serviced, the proxy is reset to its post-service level at
+every maintenance date and only the within-interval drift is read. This is an assumption, not a
+fact: the log records that a stop happened, not that the brakes were touched, so the reset may not
+hold at every stop. It is adopted because a proxy that only ever rises is not sensible to run a
+change-point test on.
+
+CUSUM keeps a running total of each week's deviation from the established mean: while the process
+is stable the positive and negative deviations cancel and the sum stays near zero, but once the
+level shifts they share a sign and the sum climbs until it crosses a threshold and flags a
+change-point. A persistent drift thus surfaces where one-off noise does not. The threshold is four
+standard deviations, tuned for about one false alarm every six months. On the reset signal it
+fires four times, only one within seven days of a documented failure. There is no reliable
+alignment between change-points and failures during the deceleration phase, consistent with the
+near-null effect sizes of Section~\ref{sec:prefailure-test}.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\linewidth]{prefailure_cusum.png}
+  \caption{CUSUM change-points on the weekly mean of energy-braking-resistance, the auxiliary
+  channel with the largest pre-failure effect size, reset to its post-service level at each
+  maintenance date (dotted) under the assumption that the brakes are serviced there. Within
+  each between-maintenance interval the proxy drifts up from zero; four change-points fire and
+  only one falls within seven days of a documented failure, so even the strongest proxy does
+  not track failures during the deceleration phase.}
+  \label{fig:cusum}
+\end{figure}
+
+\section{Energy and the maintenance calendar}
+
+The deceleration-energy axis of Section~\ref{sec:energy} was examined descriptively against the
+maintenance calendar (Figure~\ref{fig:maint}). Energy totals track how long an interval ran and how
+much the train moved, following interval length more than failure risk. A CUSUM on weekly summed
+energy fires three times, again only one within seven days of a failure. As an accounting check,
+about 96\% of all real-deceleration energy falls inside the between-maintenance intervals, so
+almost no braking is missed.
+
+One pattern in the same figure is worth flagging, with care. Every between-maintenance interval
+containing a brake failure ran longer than about three weeks, and every shorter one was
+failure-free: the groups separate cleanly at roughly 21 days. On the service-at-each-stop reading
+of Section~\ref{sec:changepoint}, a longer unmaintained stretch gives wear more time to build,
+which would make a cadence under three weeks a sensible target. Two cautions hold. A longer
+interval also spans more calendar days, so it has more chance to contain any event at all,
+confounding length with exposure; and the pattern rests on ten intervals and eight brake failures.
+It is an idea worth testing on more data, not a result.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.9\linewidth]{maintenance_interval_energy.png}
+  \caption{Deceleration energy per between-maintenance interval. Totals rise with interval
+  length. Every interval that contained a brake failure (red) ran longer than about three
+  weeks; every shorter interval was failure-free. The split is suggestive but confounded with
+  exposure time and rests on ten intervals.}
+  \label{fig:maint}
+\end{figure}
