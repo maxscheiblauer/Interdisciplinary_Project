@@ -214,6 +214,8 @@ velocity_at_start,event,VELOCITY,velocity,False,
 velocity_at_end,event,VELOCITY,velocity,False,
 jerk_peak,event,VELOCITY,velocity,False,
 jerk_rms,event,VELOCITY,velocity,False,
+deceleration_energy_specific,event,VELOCITY,velocity,False,"kinematic deceleration energy (from velocity/decel); role velocity -> a target/intensity axis, never a predictor."
+deceleration_energy_integral,event,VELOCITY,velocity,False,"kinematic deceleration energy (from velocity/decel); role velocity -> a target/intensity axis, never a predictor."
 duration_seconds,event,DURATION,velocity,False,kinematic-adjacent: structural stop property; default role velocity. Task 5 reports peak/mean-decel R2 with AND without it.
 brake_cylinder_pressure_peak,event,BRAKE_CYLINDER,actuation,True,
 brake_cylinder_pressure_mean,event,BRAKE_CYLINDER,actuation,True,

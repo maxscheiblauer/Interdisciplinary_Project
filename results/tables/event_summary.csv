@@ -7,5 +7,7 @@ duration_median_s,20.0
 duration_p95_s,30.0
 events_7d_pre_failure,23033.0
 events_30d_pre_failure,82664.0
+deceleration_energy_specific_mean,0.268489395574454
+deceleration_energy_specific_median,0.26950066462632094
 v1_event_count,157823.0
 ratio_vs_v1,0.803
