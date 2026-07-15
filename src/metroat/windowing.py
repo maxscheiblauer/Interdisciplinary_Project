@@ -26,11 +26,13 @@ def scaled_feature_cols(schema: dict | None = None) -> list[str]:
     return S.continuous_cols(schema) + F.DERIVED_COLS
 
 
-def window_day(df: pd.DataFrame, scaler, schema: dict | None = None) -> pd.DataFrame:
-    """Aggregate one *cleaned+derived* daily frame into 10 s windows.
+def window_day(df: pd.DataFrame, scaler, schema: dict | None = None,
+               window_s: int = WINDOW_S) -> pd.DataFrame:
+    """Aggregate one *cleaned+derived* daily frame into ``window_s`` s windows.
 
     Continuous+derived features are scaled (via ``scaler``) before aggregation.
-    Returns one row per non-empty 10 s bin.
+    Returns one row per non-empty bin. ``window_s`` defaults to the canonical 10 s;
+    the window-size sensitivity check passes other sizes.
     """
     feats = list(scaler.feature_names_in_)
     binr = S.binary_cols(schema)
@@ -41,7 +43,7 @@ def window_day(df: pd.DataFrame, scaler, schema: dict | None = None) -> pd.DataF
     # Floor to seconds first so binning is independent of timestamp resolution
     # (the column is datetime64[ms]).
     epoch_s = df["TIMESTAMP"].values.astype("datetime64[s]").astype("int64")
-    df["_win"] = epoch_s // WINDOW_S
+    df["_win"] = epoch_s // window_s
 
     g = df.groupby("_win", sort=True)
     out = pd.DataFrame(index=g.size().index)

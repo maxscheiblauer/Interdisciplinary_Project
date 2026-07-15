@@ -42,6 +42,7 @@ from sklearn.preprocessing import StandardScaler  # noqa: E402
 from metroat import schema as S  # noqa: E402
 from metroat import windowing as W  # noqa: E402
 from metroat.io import discover_files  # noqa: E402
+from metroat.states import KINEMATIC_FEATS, STATES, name_states_by_physics  # noqa: E402
 from metroat.validation import chi_square_shift  # noqa: E402
 
 FEAT_ROOT = ROOT / "data" / "processed" / "train_features"
@@ -60,19 +61,11 @@ proc = psutil.Process()
 RNG = 42
 
 K_FINAL = 4
-STATES = ["standing", "accelerating", "cruising", "braking"]
 GAP_LIMIT_S = 30  # windows further apart than this are not a transition
 
-# Velocity-role window features used as the clustering basis. Signed accel min/max
-# are kept on purpose -- they are what could separate accelerate vs brake.
-KINEMATIC_FEATS = [
-    "TRAIN_SPEED_ACTUAL__mean", "TRAIN_SPEED_ACTUAL__std",
-    "TRAIN_SPEED_ACTUAL__min", "TRAIN_SPEED_ACTUAL__max",
-    "acceleration__mean", "acceleration__std",
-    "acceleration__min", "acceleration__max",
-    "jerk__mean", "jerk__std",
-    "velocity_change_rate__mean", "velocity_change_rate__std",
-]
+# STATES + the 12 kinematic clustering features live in metroat.states (shared with
+# the Phase-2 leakage audit). Signed accel min/max are kept on purpose -- they are
+# what could separate accelerate vs brake.
 HIER_SUBSAMPLE = 8000   # Ward linkage is O(n^2) memory; subsample for the dendrogram
 SIL_SAMPLE = 20000
 
@@ -297,14 +290,7 @@ def finalize_labels():
     prof["jerk_mean"] = un("jerk__mean", "jerk").values
     med = prof.groupby("cluster").median()
 
-    standing = med["velocity_mean"].idxmin()
-    cruising = med["velocity_mean"].idxmax()
-    rest = [c for c in med.index if c not in (standing, cruising)]
-    accelerating = med.loc[rest, "accel_mean"].idxmax()
-    braking = [c for c in rest if c != accelerating][0]
-    labels = {standing: "standing", cruising: "cruising",
-              accelerating: "accelerating", braking: "braking"}
-    assert len(set(labels.values())) == 4, "label collision"
+    labels = name_states_by_physics(med)
     windows["state"] = windows["cluster"].map(labels)
     (MODEL_DIR / "cluster_labels.json").write_text(
         json.dumps({str(k): v for k, v in labels.items()}, indent=2), encoding="utf-8")
@@ -330,7 +316,7 @@ def finalize_labels():
     profile["label"] = [labels[c] for c in profile.index]
     profile.round(4).to_csv(TBL_DIR / "cluster_profiles.csv")
 
-    # state summary (braking should land at v>0, accel<0 = real deceleration)
+    # state summary (deceleration should land at v>0, accel<0 = real deceleration)
     summ = (windows.groupby("state")
             .agg(n=("state", "size")).reindex(STATES))
     summ["pct"] = (100 * summ["n"] / len(windows)).round(2)
@@ -339,8 +325,8 @@ def finalize_labels():
     summ["median_accel"] = [float(prof.loc[prof.cluster.map(labels) == s, "accel_mean"].median())
                             for s in STATES]
     summ.to_csv(TBL_DIR / "phase1_state_summary.csv")
-    brk = summ.loc["braking"]
-    logger.info(f"braking state: median velocity={brk['median_velocity']:.3f}, "
+    brk = summ.loc["deceleration"]
+    logger.info(f"deceleration state: median velocity={brk['median_velocity']:.3f}, "
                 f"median accel={brk['median_accel']:.4f}")
 
     if old_state is not None:
@@ -424,7 +410,7 @@ def transitions(windows):
 
 
 def event_validation(windows, states):
-    inv = pd.read_csv(ROOT / "logs" / "data_profiling" / "event_inventory.csv")
+    inv = pd.read_csv(ROOT / "inputs" / "event_inventory.csv")
     inv["start"] = pd.to_datetime(inv["start"])
     w = windows.copy()
     w["window_start"] = pd.to_datetime(w["window_start"])
@@ -515,7 +501,7 @@ Cluster->state mapping in `models/phase1/cluster_labels.json`; physical medians 
 {summ.round(4).to_string()}
 ```
 
-The `braking` state now has positive velocity and **negative** median acceleration —
+The `deceleration` state now has positive velocity and **negative** median acceleration —
 i.e. it is genuine deceleration, not a parked train with the brake held (those are
 now `standing` / `standing_braked`).
 {nvo}

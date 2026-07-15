@@ -4,10 +4,10 @@ Data-driven predictive-maintenance indicators from a one-year, 1 Hz pneumatic-sy
 sensor dataset of a Wiener Linien metro train (TU Wien, *Instandhaltungsmanagement*).
 
 - **Phase 1** - unsupervised recognition of operational regimes from **kinematics only**
-  (K-means, k=4: standing / accelerating / cruising / braking) and validation against
+  (K-means, k=4: standing / accelerating / cruising / deceleration) and validation against
   documented maintenance/failure events.
-- **Phase 2** - braking-event extraction, an honest (leakage-free) braking classifier from
-  the air-system sensors, a data-driven test of braking-intensity structure (a continuum,
+- **Phase 2** - deceleration-event extraction, an honest (leakage-free) deceleration classifier
+  from the air-system sensors, a data-driven test of deceleration-intensity structure (a continuum,
   not classes), deceleration regression, and pre-failure analysis.
 
 > **Design principle:** operational states are defined from **motion only**; the
@@ -21,12 +21,12 @@ sensor dataset of a Wiener Linien metro train (TU Wien, *Instandhaltungsmanageme
 | Name | MetroAT |
 | DOI | [10.48436/9ja0q-bq581](https://doi.org/10.48436/9ja0q-bq581) |
 | License | CC BY-NC-ND 4.0 |
-| Period | Jun 2024 – Jun 2025, 1 Hz |
+| Period | Jun 2024 to Jun 2025, 1 Hz |
 | Schema | 109 cols: 74 continuous · 20 binary · 7 operational · 4 failure/maintenance · 4 timestamp |
 
 The data is delivered as **Hive-partitioned Parquet** (`train/year=*/month=*/day=*/day.parquet`).
-**Sensor values are min-max normalized to ~[0,1]** (not physical units). Train = Jun 2024 –
-11 Feb 2025 (14.3 M rows); test (held out) = 12 Feb – Jun 2025.
+**Sensor values are min-max normalized to ~[0,1]** (not physical units). Train = Jun 2024 to
+11 Feb 2025 (14.3 M rows); test (held out) = 12 Feb to Jun 2025.
 
 Key data realities vs. the original plan:
 - Source is already Parquet - no CSV conversion needed
@@ -38,13 +38,22 @@ Key data realities vs. the original plan:
 ## Repository structure
 
 ```
-src/metroat/        io, schema, features, windowing, braking, validation, stats
-scripts/            profile_data, preprocess, phase1_states, phase2_braking, phase2_intensity, build_notebooks
+src/metroat/        io, schema, features, windowing, deceleration, states, validation, stats
+scripts/            preprocess, phase1_states, phase1_prefailure_significance, phase2_braking, phase2_intensity, window_sensitivity, report_figures
+inputs/             the three files the pipeline reads but cannot regenerate (see below)
 data/processed/     cleaned per-day features + windowed datasets (gitignored; regenerable)
 models/{phase1,2}/  scalers, K-means, classifiers/regressors (joblib)
-results/{plots,tables,reports}/   all figures, tables, and the phase reports
-logs/               profiling / phase logs
+results/{plots,tables}/   all figures and tables produced by the scripts
+logs/               run logs; written on each run, safe to delete
 ```
+
+`inputs/` holds three files the pipeline reads but does not regenerate: `schema.json`
+(the column dictionary that drives every column-group lookup), `event_inventory.csv`
+(the documented failure and maintenance events used to validate the states and study
+pre-failure behaviour), and `pca.joblib`. The last is a PCA fitted on the pneumatic
+sensors, kept so the report step can draw the explained-variance figure without
+refitting. Delete any of the three and the pipeline stops: the schema and event list
+break every phase, the PCA file breaks one report figure.
 
 ## Environment
 
@@ -57,26 +66,39 @@ uv run python -c "import pandas, sklearn, pyarrow; print('OK')"
 
 ```bash
 # place the dataset under ./train and ./test (year=/month=/day=/day.parquet)
+# the schema and event inventory the pipeline needs are committed under inputs/;
+# there is no separate profiling step to run.
 # run the scripts in this order (each reads the previous one's artifacts):
-uv run python scripts/profile_data.py      # profiling + EDA
-uv run python scripts/preprocess.py        # clean / derive / fit scaler
-uv run python scripts/phase1_states.py     # kinematic clustering + k=4 state labels + validation
-uv run python scripts/phase2_braking.py    # role ledger, leakage audit, events, braking classifier
-uv run python scripts/phase2_intensity.py  # intensity clusters/continuum, decel regression, pre-failure
+uv run python scripts/preprocess.py                    # clean / derive / fit scaler
+uv run python scripts/phase1_states.py                 # kinematic clustering + k=4 state labels + validation
+uv run python scripts/phase1_prefailure_significance.py  # re-test the pre-event state-shift result (effect size, moving-only)
+uv run python scripts/phase2_braking.py                # role ledger, leakage audit, events, deceleration classifier
+uv run python scripts/phase2_intensity.py              # intensity clusters/continuum, decel regression, pre-failure
+uv run python scripts/report_figures.py                # re-draw the report figures at 300 dpi (presentation only, no recompute)
 ```
 
-The two notebooks are generated artifacts (they load saved tables/plots, no heavy
-recompute). Regenerate them after the pipeline with:
+`window_sensitivity.py` is an optional read-only robustness check beside the
+canonical 10 s lineage (it touches no canonical model or dataset). Each window size
+sweeps every daily file (~15 min), so the sizes run independently and then combine:
 
 ```bash
-uv run python scripts/build_notebooks.py   # writes notebooks/phase1_*.ipynb, phase2_*.ipynb
+uv run python scripts/window_sensitivity.py 5    # then 10, 15, 20 (one part file each)
+uv run python scripts/window_sensitivity.py combine   # merge -> csv + png + sanity gate
 ```
 
-Phase 1/2 findings: [phase1_findings.md](results/reports/phase1_findings.md),
-[phase2_findings.md](results/reports/phase2_findings.md). Supervisor-facing
-walkthroughs are in
+It writes `results/tables/window_sensitivity.csv` and
+`results/plots/phase1/window_sensitivity.png` (state fractions + state chatter vs
+window size). Phase 2 also emits a kinematic **deceleration-energy** axis
+(`deceleration_energy_specific/_integral`, role *velocity*): its continuum check
+(`cluster_selection_energy.csv`), a deceleration/energy regression number, and a
+cumulative-energy pre-failure trajectory (`prefailure_energy.png/.csv`).
+
+The two notebooks are committed walkthrough artifacts (they load saved tables/plots,
+no heavy recompute) and are not regenerated by the pipeline. They carry the narrative
+for both phases:
 [notebooks/phase1_operational_states.ipynb](notebooks/phase1_operational_states.ipynb)
 and [notebooks/phase2_braking_analysis.ipynb](notebooks/phase2_braking_analysis.ipynb).
+`phase1_states.py` also writes a short `results/reports/phase1_findings.md` on each run.
 
 ## Reproducibility
 
@@ -106,7 +128,7 @@ how many real groups there are. Run on a sample because it is memory-heavy on mi
 
 - **Silhouette** - how tightly packed and well-separated the groups are (higher = cleaner; ~1 is
   perfect, ~0 means overlapping).
-- **Davies–Bouldin** - similar idea, lower = better.
+- **Davies-Bouldin** - similar idea, lower = better.
 - **BIC / AIC** - score a statistical model that rewards fitting the data but penalises needless
   complexity. A genuine "best k" shows up as a low point; if the score just keeps improving with
   more groups, there is no natural number of groups (a *continuum*).
@@ -145,7 +167,7 @@ is the average size of the error. Comparison is always made against a **baseline
 
 **Comparing two groups of measurements:**
 
-- **Mann–Whitney U / Kolmogorov–Smirnov** - tests for whether two groups differ.
+- **Mann-Whitney U / Kolmogorov-Smirnov** - tests for whether two groups differ.
 - **p-value** - the chance of seeing a difference this big if there were truly none. With huge
   samples, *even trivial differences get tiny p-values*, so a small p alone is not "important".
 - **Cliff's delta** - the *effect size*: how large the difference actually is (0 = none, ±1 = total

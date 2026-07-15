@@ -1,6 +1,6 @@
-"""Column-group helpers driven by ``logs/data_profiling/schema.json``.
+"""Column-group helpers driven by ``inputs/schema.json``.
 
-Never hardcode column lists elsewhere — load them from here so the pipeline
+Never hardcode column lists elsewhere; load them from here so the pipeline
 stays in sync with the profiled schema.
 """
 from __future__ import annotations
@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[2]
-_SCHEMA_PATH = _ROOT / "logs" / "data_profiling" / "schema.json"
+_SCHEMA_PATH = _ROOT / "inputs" / "schema.json"
 
 VELOCITY_COL = "TRAIN_SPEED_ACTUAL"
 FAILURE_COLS = [

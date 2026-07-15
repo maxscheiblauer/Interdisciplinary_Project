@@ -1,10 +1,10 @@
-"""Phase 2 (part 1) — braking events and the pneumatics-only state classifier.
+"""Phase 2 (part 1) — deceleration events and the pneumatics-only state classifier.
 
 Three steps: build the feature-role ledger and prove the predictor pools are
-disjoint from the kinematic targets (leakage audit); extract braking events as
-contiguous occupancies of the Phase-1 `braking` state with role-tagged features;
-then test whether the pneumatic sensors alone can tell a braking window from a
-non-braking one (auxiliary-only tier A vs aux+actuation tier B, on a held-out
+disjoint from the kinematic targets (leakage audit); extract deceleration events as
+contiguous occupancies of the Phase-1 `deceleration` state with role-tagged features;
+then test whether the pneumatic sensors alone can tell a deceleration window from a
+non-deceleration one (auxiliary-only tier A vs aux+actuation tier B, on a held-out
 split). Interpretation lives in notebooks/phase2_braking_analysis.ipynb and
 results/reports/phase2_findings.md.
 """
@@ -25,7 +25,6 @@ import matplotlib  # noqa: E402
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 from loguru import logger  # noqa: E402
-from sklearn.decomposition import PCA  # noqa: E402
 from sklearn.discriminant_analysis import (  # noqa: E402
     LinearDiscriminantAnalysis,
     QuadraticDiscriminantAnalysis,
@@ -44,8 +43,9 @@ from sklearn.pipeline import make_pipeline  # noqa: E402
 from sklearn.preprocessing import StandardScaler  # noqa: E402
 from sklearn.tree import DecisionTreeClassifier, plot_tree  # noqa: E402
 
-from metroat import braking as bv  # noqa: E402
+from metroat import deceleration as bv  # noqa: E402
 from metroat import schema as S  # noqa: E402
+from metroat.states import KINEMATIC_FEATS as STATE_DEF_FEATS  # noqa: E402
 
 PROC = ROOT / "data" / "processed"
 FEAT_ROOT = PROC / "train_features"
@@ -58,19 +58,12 @@ for d in (PLOT_DIR, TBL_DIR, LOG_DIR, MODEL_DIR):
 
 LEDGER = TBL_DIR / "feature_roles.csv"
 AUDIT = LOG_DIR / "leakage_audit.txt"
-OUT = PROC / "braking_state_events.parquet"
-OLD_COUNT = 157823  # earlier braking_events count, kept as a sanity gate on the new total
+OUT = PROC / "deceleration_state_events.parquet"
+OLD_COUNT = 157823  # earlier deceleration_events count, kept as a sanity gate on the new total
 RNG = 42
 
-# Phase-1 state-defining features (Option A: kinematic only).
-STATE_DEF_FEATS = [
-    "TRAIN_SPEED_ACTUAL__mean", "TRAIN_SPEED_ACTUAL__std",
-    "TRAIN_SPEED_ACTUAL__min", "TRAIN_SPEED_ACTUAL__max",
-    "acceleration__mean", "acceleration__std",
-    "acceleration__min", "acceleration__max",
-    "jerk__mean", "jerk__std",
-    "velocity_change_rate__mean", "velocity_change_rate__std",
-]
+# Phase-1 state-defining features (Option A: kinematic only) come from
+# metroat.states as STATE_DEF_FEATS -- one copy, shared with Phase-1 labelling.
 DAY_COLS = ["TIMESTAMP", S.VELOCITY_COL, "acceleration", "jerk",
             "main_reservoir_pressure_rate", "AMBIENT_TEMPERATURE"]
 
@@ -121,8 +114,8 @@ def leakage_audit(ledger: pd.DataFrame) -> None:
         "",
         f"  predictor pool overlap with state-definers: {len(overlap_state)} -> DISJOINT OK",
         "",
-        "Interpretation: `state` (and `braking`) is built from kinematics ALONE -- no",
-        "pneumatic sensor entered the clustering. So predicting braking from pneumatics",
+        "Interpretation: `state` (and `deceleration`) is built from kinematics ALONE -- no",
+        "pneumatic sensor entered the clustering. So predicting deceleration from pneumatics",
         "(state classifier) and recovering deceleration from pneumatics (regression) are",
         "BOTH fully cross-modal: every predictor is independent of the kinematic features",
         "that defined the target. Tier A (auxiliary-only) and Tier B (+actuation) are clean.",
@@ -150,9 +143,9 @@ def extract_events(schema) -> None:
                                   columns=["window_start", "window_end", "state"])
         windows["window_start"] = pd.to_datetime(windows["window_start"])
         windows["window_end"] = pd.to_datetime(windows["window_end"])
-        events = bv.braking_events_from_windows(windows)
+        events = bv.deceleration_events_from_windows(windows)
         events["date"] = events["start"].dt.normalize()
-        logger.info(f"{len(events):,} contiguous braking events "
+        logger.info(f"{len(events):,} contiguous deceleration events "
                     f"(gap_s={bv.EVENT_GAP_S:g}, min_dur={bv.EVENT_MIN_DURATION_S:g})")
 
         feats = []
@@ -166,7 +159,7 @@ def extract_events(schema) -> None:
         ev = pd.concat(feats, ignore_index=True)
         ev["start_timestamp"] = pd.to_datetime(ev["start_timestamp"])
 
-        inv = pd.read_csv(ROOT / "logs" / "data_profiling" / "event_inventory.csv")
+        inv = pd.read_csv(ROOT / "inputs" / "event_inventory.csv")
         inv = inv[(inv.event_class == "failure") & (inv.type == "Brake System Failure")]
         fail_starts = pd.to_datetime(inv["start"]).to_numpy()
 
@@ -186,7 +179,7 @@ def extract_events(schema) -> None:
         ev["is_real_deceleration"] = bv.is_real_deceleration(ev).to_numpy()
         ev.to_parquet(OUT, engine="pyarrow", compression="snappy", index=False)
 
-    logger.info(f"braking_state_events: {len(ev):,} events | "
+    logger.info(f"deceleration_state_events: {len(ev):,} events | "
                 f"real-decel={ev['is_real_deceleration'].mean():.1%} | "
                 f"7d-pre={int(ev['failure_within_7_days'].sum())} "
                 f"30d-pre={int(ev['failure_within_30_days'].sum())}")
@@ -196,20 +189,27 @@ def extract_events(schema) -> None:
     ax.hist(dur[dur <= np.quantile(dur, 0.99)], bins=60, color="steelblue")
     ax.axvline(float(np.median(dur)), color="red", ls="--", label=f"median={np.median(dur):.0f}s")
     ax.set_xlabel("event duration (seconds)"); ax.set_ylabel("count")
-    ax.set_title(f"Braking-event duration (n={len(ev):,}, contiguous braking-state occupancy)")
+    ax.set_title(f"Deceleration-event duration (n={len(ev):,}, contiguous deceleration-state occupancy)")
     ax.legend(); fig.tight_layout()
     fig.savefig(PLOT_DIR / "event_duration_distribution.png", dpi=150); plt.close(fig)
 
+    # kinematic deceleration-energy summary (real-deceleration events only: stationary
+    # holds carry no energy). Informational -- the axis itself is analysed in
+    # phase2_intensity.
+    real = ev[ev["is_real_deceleration"]]
+    esp = real["deceleration_energy_specific"].to_numpy("float64")
     summary = pd.DataFrame({
         "metric": ["n_events", "n_real_deceleration", "frac_real_deceleration",
                    "duration_mean_s", "duration_median_s", "duration_p95_s",
                    "events_7d_pre_failure", "events_30d_pre_failure",
+                   "deceleration_energy_specific_mean", "deceleration_energy_specific_median",
                    "v1_event_count", "ratio_vs_v1"],
         "value": [len(ev), int(ev["is_real_deceleration"].sum()),
                   round(float(ev["is_real_deceleration"].mean()), 4),
                   float(np.mean(dur)), float(np.median(dur)), float(np.quantile(dur, 0.95)),
                   int(ev["failure_within_7_days"].sum()),
                   int(ev["failure_within_30_days"].sum()),
+                  float(np.nanmean(esp)), float(np.nanmedian(esp)),
                   OLD_COUNT, round(len(ev) / OLD_COUNT, 3)],
     })
     summary.to_csv(TBL_DIR / "event_summary.csv", index=False)
@@ -231,11 +231,11 @@ def _eval(name, model, Xtr, Xte, ytr, yte):
     row = dict(
         accuracy=accuracy_score(yte, pred),
         balanced_accuracy=balanced_accuracy_score(yte, pred),
-        precision_braking=float(p[0]), recall_braking=float(r[0]), f1_braking=float(f1[0]),
+        precision_deceleration=float(p[0]), recall_deceleration=float(r[0]), f1_deceleration=float(f1[0]),
         roc_auc=roc_auc_score(yte, proba),
     )
     logger.info(f"{name}: bal_acc={row['balanced_accuracy']:.3f} "
-                f"F1(brake)={row['f1_braking']:.3f} AUC={row['roc_auc']:.3f}")
+                f"F1(decel)={row['f1_deceleration']:.3f} AUC={row['roc_auc']:.3f}")
     return model, row, confusion_matrix(yte, pred)
 
 
@@ -256,22 +256,21 @@ def classify_states() -> None:
     assert not (set(full) & vel), "velocity feature leaked into predictors!"
     logger.info(f"tier A (auxiliary)={len(aux)} feats | tier B (aux+actuation)={len(full)} feats")
 
-    y = (df["state"] == "braking").astype(int).to_numpy()
+    y = (df["state"] == "deceleration").astype(int).to_numpy()
     base_rate = y.mean()
-    logger.info(f"is_braking base rate = {base_rate:.3f} ({y.sum():,}/{len(y):,})")
+    logger.info(f"is_deceleration base rate = {base_rate:.3f} ({y.sum():,}/{len(y):,})")
 
     tiers = {"auxonly": aux, "full": full}
     rows = []
     confusions: dict[tuple[str, str], np.ndarray] = {}
     saved_lda_full = None
     saved_dt_full = None
-    ALL_MODELS = ["dt", "lda", "qda", "rf", "lr", "pca_lda"]
+    ALL_MODELS = ["dt", "lda", "qda", "rf", "lr"]
 
     for tier_name, feats in tiers.items():
         X = df[feats].to_numpy("float32")
         Xtr, Xte, ytr, yte = train_test_split(
             X, y, test_size=0.25, random_state=RNG, stratify=y)
-        n_pca = min(15, len(feats) - 1)
         models = {
             "dt": DecisionTreeClassifier(max_depth=5, class_weight="balanced", random_state=RNG),
             "lda": make_pipeline(StandardScaler(), LinearDiscriminantAnalysis()),
@@ -281,8 +280,6 @@ def classify_states() -> None:
                                          class_weight="balanced", n_jobs=-1, random_state=RNG),
             "lr": make_pipeline(StandardScaler(), LogisticRegression(
                 max_iter=1000, class_weight="balanced", solver="saga", random_state=RNG)),
-            "pca_lda": make_pipeline(StandardScaler(), PCA(n_components=n_pca),
-                                     LinearDiscriminantAnalysis()),
         }
         for mname, model in models.items():
             fitted, row, cm = _eval(f"{tier_name}/{mname}", model, Xtr, Xte, ytr, yte)
@@ -298,20 +295,20 @@ def classify_states() -> None:
 
     metrics = pd.DataFrame(rows)[
         ["tier", "model", "n_features", "accuracy", "balanced_accuracy",
-         "precision_braking", "recall_braking", "f1_braking", "roc_auc"]]
+         "precision_deceleration", "recall_deceleration", "f1_deceleration", "roc_auc"]]
     metrics.to_csv(metrics_path, index=False)
     logger.info(f"metrics written:\n{metrics.to_string(index=False)}")
 
     # Tier A vs B contrast
     for m in ALL_MODELS:
-        a = metrics[(metrics.tier == "auxonly") & (metrics.model == m)]["f1_braking"].iloc[0]
-        b = metrics[(metrics.tier == "full") & (metrics.model == m)]["f1_braking"].iloc[0]
-        logger.info(f"{m}: F1(brake) auxonly={a:.3f} -> full={b:.3f} (+{b - a:.3f})")
+        a = metrics[(metrics.tier == "auxonly") & (metrics.model == m)]["f1_deceleration"].iloc[0]
+        b = metrics[(metrics.tier == "full") & (metrics.model == m)]["f1_deceleration"].iloc[0]
+        logger.info(f"{m}: F1(decel) auxonly={a:.3f} -> full={b:.3f} (+{b - a:.3f})")
 
     # decision tree plot (tier B)
     dt, feats = saved_dt_full
     fig, ax = plt.subplots(figsize=(22, 11))
-    plot_tree(dt, feature_names=feats, class_names=["not_braking", "braking"],
+    plot_tree(dt, feature_names=feats, class_names=["not_deceleration", "deceleration"],
               filled=True, fontsize=7, max_depth=3, ax=ax, impurity=False)
     ax.set_title("State classifier decision tree (tier B: aux+actuation, top 3 levels)")
     fig.tight_layout()
@@ -325,18 +322,21 @@ def classify_states() -> None:
     fig, ax = plt.subplots(figsize=(9, 8))
     ax.barh([feats[i] for i in order][::-1], coef[order][::-1], color="darkorange")
     ax.set_xlabel("standardized LDA coefficient")
-    ax.set_title("Top-20 LDA loadings — braking discriminant (tier B)")
+    ax.set_title("Top-20 LDA loadings — deceleration discriminant (tier B)")
     fig.tight_layout()
     fig.savefig(PLOT_DIR / "state_clf_lda_coeffs.png", dpi=150)
     plt.close(fig)
 
     # confusion matrices (all tiers x all models: 4 rows x 3 cols)
     fig, axes = plt.subplots(4, 3, figsize=(13, 16))
+    for ax in axes.ravel():
+        ax.axis("off")
     for i, tier_name in enumerate(["auxonly", "full"]):
         for j, mname in enumerate(ALL_MODELS):
             row = i * 2 + (j // 3)
             col = j % 3
             ax = axes[row, col]
+            ax.axis("on")
             cm = confusions[(tier_name, mname)]
             cmn = cm / cm.sum(axis=1, keepdims=True)
             ax.imshow(cmn, cmap="Blues", vmin=0, vmax=1)
@@ -345,7 +345,7 @@ def classify_states() -> None:
                     ax.text(c, r, f"{cm[r, c]:,}\n{cmn[r, c]:.2f}",
                             ha="center", va="center", fontsize=8)
             ax.set_xticks([0, 1]); ax.set_yticks([0, 1])
-            ax.set_xticklabels(["not", "brake"]); ax.set_yticklabels(["not", "brake"])
+            ax.set_xticklabels(["not", "decel"]); ax.set_yticklabels(["not", "decel"])
             ax.set_title(f"{tier_name} / {mname}")
             if col == 0:
                 ax.set_ylabel("true")
@@ -360,7 +360,7 @@ def classify_states() -> None:
     # model comparison bar chart (AUC and F1 for all models, both tiers)
     fig, axes = plt.subplots(1, 2, figsize=(13, 5))
     x = np.arange(len(ALL_MODELS))
-    for ax, metric in zip(axes, ["roc_auc", "f1_braking"]):
+    for ax, metric in zip(axes, ["roc_auc", "f1_deceleration"]):
         for offset, tier_name in zip([-0.2, 0.2], ["auxonly", "full"]):
             vals = [metrics[(metrics.tier == tier_name) & (metrics.model == m)][metric].iloc[0]
                     for m in ALL_MODELS]
@@ -368,7 +368,7 @@ def classify_states() -> None:
         ax.set_xticks(x); ax.set_xticklabels(ALL_MODELS, rotation=15, ha="right")
         ax.set_ylabel(metric); ax.set_title(f"{metric} by model and predictor tier")
         ax.set_ylim(0, 1); ax.legend()
-    fig.suptitle("Braking-state classifier comparison (held-out test set)")
+    fig.suptitle("Deceleration-state classifier comparison (held-out test set)")
     fig.tight_layout()
     fig.savefig(PLOT_DIR / "state_clf_comparison.png", dpi=150)
     plt.close(fig)
@@ -381,7 +381,7 @@ def main() -> None:
     leakage_audit(ledger)
     extract_events(schema)
     classify_states()
-    logger.info("phase2 braking (part 1) complete")
+    logger.info("phase2 deceleration (part 1) complete")
 
 
 if __name__ == "__main__":

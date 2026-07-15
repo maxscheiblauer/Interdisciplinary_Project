@@ -1,15 +1,15 @@
-"""Braking analysis primitives (pure logic, no I/O).
+"""Deceleration analysis primitives (pure logic, no I/O).
 
 Central job is the **feature-role ledger**: every window / event feature is
 assigned exactly one *role* so that no task ever lets a predictor leak its own
 target. Roles:
 
 * ``velocity``  — kinematics (speed, acceleration, jerk, deceleration, delta_v,
-  velocity-at-start/end). These *define* braking and intensity; they are only ever
+  velocity-at-start/end). These *define* deceleration and intensity; they are only ever
   **targets**, never predictors in the classification/regression tasks.
 * ``actuation`` — the brake *command* pneumatics (brake-cylinder, proportional
   valve, spring brake, pneumatic braking force). Physically near-tautological with
-  braking, so always reported separately (tier B) so a high score isn't over-claimed.
+  deceleration, so always reported separately (tier B) so a high score isn't over-claimed.
 * ``auxiliary`` — non-command health pneumatics (main reservoir, load pressure,
   load signal, energy-braking-resistance, ambient temperature, pressure-rate). The
   *interesting* independent predictors (tier A).
@@ -70,6 +70,8 @@ _EVENT_GROUP: dict[str, str] = {
     "velocity_at_end": "VELOCITY",
     "jerk_peak": "VELOCITY",
     "jerk_rms": "VELOCITY",
+    "deceleration_energy_specific": "VELOCITY",
+    "deceleration_energy_integral": "VELOCITY",
     "duration_seconds": "DURATION",  # ambiguous, see note below
     # actuation
     "brake_cylinder_pressure_peak": "BRAKE_CYLINDER",
@@ -176,6 +178,9 @@ def build_role_ledger(features: list[str], level: str = "window") -> pd.DataFram
         if base_name(f) == "duration_seconds":
             note = ("kinematic-adjacent: structural stop property; default role "
                     "velocity. Task 5 reports peak/mean-decel R2 with AND without it.")
+        elif base_name(f).startswith("deceleration_energy"):
+            note = ("kinematic deceleration energy (from velocity/decel); role velocity "
+                    "-> a target/intensity axis, never a predictor.")
         rows.append({
             "feature": f,
             "level": level,
@@ -194,14 +199,14 @@ EVENT_FEATURE_NAMES: list[str] = list(_EVENT_GROUP.keys())
 
 # --- event extraction ------------------------------------------------------
 
-# Events are one contiguous occupancy of the Phase-1 braking state. We merge
+# Events are one contiguous occupancy of the Phase-1 deceleration state. We merge
 # only *immediately adjacent* 10 s windows; the max gap that still counts as
 # adjacent is one window length (so a single missing window splits the event).
 EVENT_GAP_S = 10.0          # = window length; immediate adjacency only
 EVENT_MIN_DURATION_S = 10.0  # drop events shorter than one full window
 EVENT_LONG_FLAG_S = 300.0    # flag (keep) very long events
 
-# ~45% of braking-STATE events are stationary brake-holds (train already stopped,
+# ~45% of deceleration-STATE events are stationary brake-holds (train already stopped,
 # brake applied) with zero deceleration. A *real deceleration* event is one where
 # the train was moving at the start and actually lost speed. Tasks 5/6 use this to
 # scope to "how hard a MOVING train brakes" (confirmed scope with Maximilian).
@@ -215,17 +220,17 @@ def is_real_deceleration(events: pd.DataFrame) -> pd.Series:
             & (events["velocity_at_start"] > REAL_DECEL_MIN_V0))
 
 
-def braking_events_from_windows(
+def deceleration_events_from_windows(
     windows: pd.DataFrame, gap_s: float = EVENT_GAP_S, min_dur: float = EVENT_MIN_DURATION_S
 ) -> pd.DataFrame:
-    """Contiguous braking-state occupancies from labeled 10 s windows.
+    """Contiguous deceleration-state occupancies from labeled 10 s windows.
 
     Returns one row per event: ``start, end, duration_s, n_windows, is_long``.
-    Two braking windows belong to the same event iff the gap between them is
+    Two deceleration windows belong to the same event iff the gap between them is
     ``<= gap_s`` (default one window length). Events shorter than ``min_dur`` are
     dropped (a single full window passes); long events are flagged, not dropped.
     """
-    b = windows[windows["state"] == "braking"]
+    b = windows[windows["state"] == "deceleration"]
     cols = ["start", "end", "duration_s", "n_windows", "is_long"]
     if b.empty:
         return pd.DataFrame(columns=cols)
@@ -266,7 +271,7 @@ def event_features(
 ) -> pd.DataFrame:
     """Role-tagged per-event features from a *single day's* 1 Hz frame.
 
-    ``intervals`` are the events (from :func:`braking_events_from_windows`) whose
+    ``intervals`` are the events (from :func:`deceleration_events_from_windows`) whose
     span lies within ``day_df``. Velocity features are the target side; actuation
     and auxiliary features are the predictor pools (see the role ledger). Integral
     features use dt = 1 s and therefore scale with event duration.
@@ -328,6 +333,13 @@ def event_features(
             velocity_at_end=float(vel[m][-1]),
             jerk_peak=_peak(np.abs(jerk[m])),
             jerk_rms=float(np.sqrt(np.nanmean(jerk[m] ** 2))),
+            # specific kinetic energy dissipated: 1/2 (v0^2 - v1^2), in
+            # normalized-velocity^2 units. A physically comparable intensity/wear
+            # axis; >= 0 for a genuine deceleration (v drops).
+            deceleration_energy_specific=float(0.5 * (vel[m][0] ** 2 - vel[m][-1] ** 2)),
+            # deceleration-power integral: sum of v * decel over the event (dt = 1 s), so
+            # it scales with duration and parallels the pneumatic *_integral features.
+            deceleration_energy_integral=float(np.nansum(vel[m] * decel)),
             # --- actuation ---
             brake_cylinder_pressure_peak=_peak(bc),
             brake_cylinder_pressure_mean=_mean(bc),
