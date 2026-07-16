@@ -26,7 +26,17 @@ models/phase2/decel_regress_rf_peak.joblib
 poster/assets/
 poster/*.typ
 
-# LaTeX build artifacts (report/ ships sources + the compiled PDF only)
+# Report: only the compiled PDF is published (LaTeX sources kept locally, not tracked)
+report/*.tex
+report/*.bib
+report/*.png
+report/Bilder/
+report/main.pdf
+
+# Exposé / proposal PDF — not published
+/20260512-Scheiblauer-expose*.pdf
+
+# LaTeX build artifacts
 *.aux
 *.bcf
 *.run.xml
